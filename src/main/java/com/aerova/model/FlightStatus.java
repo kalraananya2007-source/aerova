@@ -1,10 +1,11 @@
+
 package com.aerova.model;
 
 public enum FlightStatus {
     SCHEDULED,
     LANDED,
-    BOARDING,
+    TAXIING,
+    AT_GATE,
     DEPARTED,
-    DELAYED,
     CANCELLED
 }
