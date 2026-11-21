@@ -1,27 +1,58 @@
+
 package com.aerova.model;
 
 /** Represents an aircraft registered with the airport. */
 public class Aircraft {
+
     private int aircraftId;
     private String registrationNo;
     private String aircraftModel;
     private AircraftSize aircraftSize;
+    private int capacity;
 
     public Aircraft() {
     }
 
-    public Aircraft(String registrationNo, String aircraftModel, AircraftSize aircraftSize) {
+    // Constructor without database ID
+    public Aircraft(String registrationNo, String aircraftModel,
+                    AircraftSize aircraftSize) {
         this.registrationNo = registrationNo;
         this.aircraftModel = aircraftModel;
         this.aircraftSize = aircraftSize;
     }
 
-    public Aircraft(int aircraftId, String registrationNo, String aircraftModel,
-                    AircraftSize aircraftSize) {
+    // Constructor with database ID
+    public Aircraft(int aircraftId, String registrationNo,
+                    String aircraftModel, AircraftSize aircraftSize) {
         this.aircraftId = aircraftId;
         this.registrationNo = registrationNo;
         this.aircraftModel = aircraftModel;
         this.aircraftSize = aircraftSize;
+    }
+
+    // Constructor with capacity
+    public Aircraft(String registrationNo, String aircraftModel,
+                    AircraftSize aircraftSize, int capacity) {
+        this.registrationNo = registrationNo;
+        this.aircraftModel = aircraftModel;
+        this.aircraftSize = aircraftSize;
+        setCapacity(capacity);
+    }
+
+    // Constructor with ID and capacity
+    public Aircraft(int aircraftId, String registrationNo,
+                    String aircraftModel, AircraftSize aircraftSize,
+                    int capacity) {
+        this.aircraftId = aircraftId;
+        this.registrationNo = registrationNo;
+        this.aircraftModel = aircraftModel;
+        this.aircraftSize = aircraftSize;
+        this.capacity = capacity;
+        if (capacity <= 0) {
+            throw new IllegalArgumentException(
+                "Aircraft capacity must be greater than zero."
+            );
+        }
     }
 
     public int getAircraftId() {
@@ -56,8 +87,22 @@ public class Aircraft {
         this.aircraftSize = aircraftSize;
     }
 
+    public int getCapacity() {
+        return capacity;
+    }
+
+    public void setCapacity(int capacity) {
+        if (capacity <= 0) {
+            throw new IllegalArgumentException(
+                "Aircraft capacity must be greater than zero."
+            );
+        }
+        this.capacity = capacity;
+    }
+
     @Override
     public String toString() {
-        return registrationNo + " (" + aircraftModel + ")";
+        return registrationNo + " (" + aircraftModel
+                + ", Capacity: " + capacity + ")";
     }
 }
