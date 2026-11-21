@@ -1,30 +1,37 @@
+
 package com.aerova.model;
 
 import java.time.LocalDateTime;
 
-/** Represents an arrival or departure handled by Aerova. */
-public class Flight {
+public class Flight implements Comparable<Flight> {
+
     private int flightId;
     private String flightNumber;
+    private String airline;
     private Aircraft aircraft;
     private FlightType flightType;
     private LocalDateTime scheduledTime;
     private LocalDateTime actualTime;
     private FlightStatus status;
     private boolean emergency;
+    private int delayMinutes;
 
     public Flight() {
         this.status = FlightStatus.SCHEDULED;
+        this.delayMinutes = 0;
     }
 
-    public Flight(String flightNumber, Aircraft aircraft, FlightType flightType,
-                  LocalDateTime scheduledTime, boolean emergency) {
+    public Flight(String flightNumber, Aircraft aircraft,
+                  FlightType flightType, LocalDateTime scheduledTime,
+                  boolean emergency) {
+
         this.flightNumber = flightNumber;
         this.aircraft = aircraft;
         this.flightType = flightType;
         this.scheduledTime = scheduledTime;
         this.emergency = emergency;
         this.status = FlightStatus.SCHEDULED;
+        this.delayMinutes = 0;
     }
 
     public int getFlightId() {
@@ -41,6 +48,14 @@ public class Flight {
 
     public void setFlightNumber(String flightNumber) {
         this.flightNumber = flightNumber;
+    }
+
+    public String getAirline() {
+        return airline;
+    }
+
+    public void setAirline(String airline) {
+        this.airline = airline;
     }
 
     public Aircraft getAircraft() {
@@ -89,5 +104,28 @@ public class Flight {
 
     public void setEmergency(boolean emergency) {
         this.emergency = emergency;
+    }
+
+    public int getDelayMinutes() {
+        return delayMinutes;
+    }
+
+    public void setDelayMinutes(int delayMinutes) {
+        if (delayMinutes < 0) {
+            throw new IllegalArgumentException(
+                "Delay cannot be negative."
+            );
+        }
+
+        this.delayMinutes = delayMinutes;
+    }
+
+    public boolean isDelayed() {
+        return delayMinutes > 0;
+    }
+
+    @Override
+    public int compareTo(Flight other) {
+        return this.scheduledTime.compareTo(other.scheduledTime);
     }
 }
