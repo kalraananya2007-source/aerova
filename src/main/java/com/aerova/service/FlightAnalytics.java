@@ -7,7 +7,6 @@ import com.aerova.model.FlightStatus;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Map;
 
 public class FlightAnalytics {
 
