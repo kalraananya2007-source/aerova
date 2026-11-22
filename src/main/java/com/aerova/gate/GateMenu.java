@@ -1,14 +1,19 @@
+
 package com.aerova.gate;
 
 import java.sql.SQLException;
 import java.util.List;
 import java.util.Scanner;
 
+import com.aerova.dao.FlightRepository;
+import com.aerova.model.Flight;
+
 public class GateMenu {
 
     private final Scanner scanner = new Scanner(System.in);
     private final GateManager gateManager = new GateManager();
     private final GateRepository gateRepository = new GateRepository();
+    private final FlightRepository flightRepository = new FlightRepository();
 
     public void showMenu() {
 
@@ -20,6 +25,7 @@ public class GateMenu {
             System.out.println("2. Search Gate by ID");
             System.out.println("3. Add New Gate");
             System.out.println("4. Update Gate Status");
+            System.out.println("5. Assign Gate to Flight");
             System.out.println("0. Exit");
             System.out.print("Enter your choice: ");
 
@@ -31,6 +37,7 @@ public class GateMenu {
                     case 2 -> searchGate();
                     case 3 -> addGate();
                     case 4 -> updateGateStatus();
+                    case 5 -> assignGateToFlight();
                     case 0 -> System.out.println("Exiting Gate Menu...");
                     default -> System.out.println("Invalid choice!");
                 }
@@ -140,6 +147,48 @@ public class GateMenu {
         gateRepository.updateGateStatus(gateId, newStatus);
 
         System.out.println("Gate status updated successfully!");
+    }
+
+    // Automatically assign a suitable gate to a flight
+    private void assignGateToFlight() throws SQLException {
+
+        System.out.print("Enter Flight ID: ");
+        int flightId = Integer.parseInt(scanner.nextLine());
+
+        Flight flight = flightRepository.findFlightById(flightId);
+
+        if (flight == null) {
+            System.out.println("Flight not found.");
+            return;
+        }
+
+        System.out.println("Flight Number: " + flight.getFlightNumber());
+        System.out.println("Aircraft Size: "
+                + flight.getAircraft().getAircraftSize());
+        System.out.println("Scheduled Time: " + flight.getScheduledTime());
+
+        System.out.print("Enter gate occupancy duration (minutes): ");
+        int durationMinutes = Integer.parseInt(scanner.nextLine());
+
+        if (durationMinutes <= 0) {
+            System.out.println("Duration must be greater than zero.");
+            return;
+        }
+
+        Gate assignedGate = gateManager.assignGateToFlight(
+                flight, durationMinutes);
+
+        if (assignedGate == null) {
+            System.out.println("No suitable gate available for this flight.");
+        } else {
+            System.out.println("\nGate assigned successfully!");
+            System.out.println("Gate ID: " + assignedGate.getGateId());
+            System.out.println("Gate Code: " + assignedGate.getGateCode());
+            System.out.println("Gate Size: " + assignedGate.getGateSize());
+            System.out.println("Assigned From: " + flight.getScheduledTime());
+            System.out.println("Assigned Until: "
+                    + flight.getScheduledTime().plusMinutes(durationMinutes));
+        }
     }
 
     // Display one gate
