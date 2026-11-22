@@ -1,7 +1,7 @@
 package com.aerova.gate;
 
 import java.sql.SQLException;
-import java.util.ArrayList;
+import java.util.List;
 import java.util.Scanner;
 
 public class GateMenu {
@@ -49,7 +49,7 @@ public class GateMenu {
     // Display all gates
     private void viewAllGates() throws SQLException {
 
-        ArrayList<Gate> gates = gateManager.getAllGates();
+        List<Gate> gates = gateManager.getAllGates();
 
         if (gates.isEmpty()) {
             System.out.println("No gates found.");
