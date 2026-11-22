@@ -10,16 +10,19 @@ CREATE TABLE IF NOT EXISTS aircraft (
     registration_no VARCHAR(20) NOT NULL UNIQUE,
     aircraft_model VARCHAR(80) NOT NULL,
     aircraft_size ENUM('SMALL', 'MEDIUM', 'LARGE') NOT NULL,
+    capacity INT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS flights (
     flight_id INT AUTO_INCREMENT PRIMARY KEY,
     flight_number VARCHAR(20) NOT NULL UNIQUE,
+    airline VARCHAR(100) NULL,
     aircraft_id INT NOT NULL,
     flight_type ENUM('ARRIVAL', 'DEPARTURE') NOT NULL,
     scheduled_time DATETIME NOT NULL,
     actual_time DATETIME NULL,
+    delay_minutes INT NOT NULL DEFAULT 0,
     flight_status ENUM('SCHEDULED', 'LANDED', 'TAXIING', 'AT_GATE', 'DEPARTED', 'CANCELLED') NOT NULL DEFAULT 'SCHEDULED',
     is_emergency BOOLEAN NOT NULL DEFAULT FALSE,
     CONSTRAINT fk_flights_aircraft FOREIGN KEY (aircraft_id)
