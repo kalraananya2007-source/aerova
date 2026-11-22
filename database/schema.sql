@@ -1,3 +1,4 @@
+
 -- Aerova initial MySQL schema
 -- Run this script in MySQL Workbench or using the MySQL CLI.
 
@@ -19,7 +20,7 @@ CREATE TABLE IF NOT EXISTS flights (
     flight_type ENUM('ARRIVAL', 'DEPARTURE') NOT NULL,
     scheduled_time DATETIME NOT NULL,
     actual_time DATETIME NULL,
-    flight_status ENUM('SCHEDULED', 'LANDED', 'BOARDING', 'DEPARTED', 'DELAYED', 'CANCELLED') NOT NULL DEFAULT 'SCHEDULED',
+    flight_status ENUM('SCHEDULED', 'LANDED', 'TAXIING', 'AT_GATE', 'DEPARTED', 'CANCELLED') NOT NULL DEFAULT 'SCHEDULED',
     is_emergency BOOLEAN NOT NULL DEFAULT FALSE,
     CONSTRAINT fk_flights_aircraft FOREIGN KEY (aircraft_id)
         REFERENCES aircraft(aircraft_id)
