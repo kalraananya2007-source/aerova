@@ -192,13 +192,18 @@ public class GateMenu {
     }
 
     // Display one gate
-    private void displayGate(Gate gate) {
+   // Display one gate with booking information
+private void displayGate(Gate gate) throws SQLException {
 
-        System.out.println("\n--------------------------------");
-        System.out.println("Gate ID: " + gate.getGateId());
-        System.out.println("Gate Code: " + gate.getGateCode());
-        System.out.println("Gate Size: " + gate.getGateSize());
-        System.out.println("Gate Status: " + gate.getStatus());
-        System.out.println("--------------------------------");
-    }
+    System.out.println("\n--------------------------------");
+    System.out.println("Gate ID: " + gate.getGateId());
+    System.out.println("Gate Code: " + gate.getGateCode());
+    System.out.println("Gate Size: " + gate.getGateSize());
+    System.out.println("Gate Status: " + gate.getStatus());
+
+    System.out.println("\n--- Scheduled Bookings ---");
+    System.out.println(gateRepository.getGateBookingInfo(gate.getGateId()));
+
+    System.out.println("--------------------------------");
+}
 }

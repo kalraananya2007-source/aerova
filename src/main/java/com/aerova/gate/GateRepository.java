@@ -79,14 +79,47 @@ public class GateRepository {
         return gateList;
     }
 
+    // Get scheduled assignments for a gate
+    public String getGateBookingInfo(int gateId) throws SQLException {
+
+        String sql = "SELECT f.flight_number, ga.assigned_from, "
+                + "ga.assigned_until "
+                + "FROM gate_assignments ga "
+                + "JOIN flights f ON ga.flight_id = f.flight_id "
+                + "WHERE ga.gate_id = ? "
+                + "AND ga.assignment_status IN ('SCHEDULED', 'ACTIVE') "
+                + "ORDER BY ga.assigned_from";
+
+        StringBuilder info = new StringBuilder();
+
+        try (Connection con = DatabaseConnection.getConnection();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+
+            ps.setInt(1, gateId);
+
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    info.append("Flight: ")
+                            .append(rs.getString("flight_number"))
+                            .append(" | From: ")
+                            .append(rs.getTimestamp("assigned_from"))
+                            .append(" | Until: ")
+                            .append(rs.getTimestamp("assigned_until"))
+                            .append(System.lineSeparator());
+                }
+            }
+        }
+
+        if (info.length() == 0) {
+            return "No upcoming bookings";
+        }
+
+        return info.toString();
+    }
+
     // Update gate status
     public void updateGateStatus(int gateId, GateStatus status)
             throws SQLException {
-
-        if (status == GateStatus.RESERVED) {
-            throw new SQLException(
-                    "RESERVED is not supported by the database.");
-        }
 
         String sql = "UPDATE gates SET gate_status = ? "
                 + "WHERE gate_id = ?";
@@ -102,14 +135,15 @@ public class GateRepository {
     }
 
     // Save a flight's gate assignment
-    public int saveGateAssignment(int flightId,
-                                 int gateId,
-                                 LocalDateTime assignedFrom,
-                                 LocalDateTime assignedUntil)
-            throws SQLException {
+    public int saveGateAssignment(
+            int flightId,
+            int gateId,
+            LocalDateTime assignedFrom,
+            LocalDateTime assignedUntil) throws SQLException {
 
         if (assignedFrom == null || assignedUntil == null
                 || !assignedFrom.isBefore(assignedUntil)) {
+
             throw new IllegalArgumentException(
                     "Invalid assignment time range.");
         }
@@ -129,6 +163,9 @@ public class GateRepository {
             ps.setString(5, "SCHEDULED");
 
             ps.executeUpdate();
+
+            // Automatically mark gate as RESERVED after booking
+            updateGateStatus(gateId, GateStatus.RESERVED);
 
             try (ResultSet rs = ps.getGeneratedKeys()) {
                 if (rs.next()) {
