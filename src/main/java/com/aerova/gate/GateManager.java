@@ -16,22 +16,29 @@ public class GateManager {
         gateAllocator = new GateAllocator();
     }
 
+    // Get all gates and refresh their statuses
     public List<Gate> getAllGates() throws SQLException {
+        gateRepository.refreshGateStatuses();
         return gateRepository.findAllGates();
     }
 
+    // Get gate by ID and refresh status
     public Gate getGateById(int gateId) throws SQLException {
+        gateRepository.refreshGateStatuses();
         return gateRepository.findGateById(gateId);
     }
 
-    public Gate findGateForFlight(Flight flight, int durationMinutes)
-            throws SQLException {
-        return gateAllocator.findSuitableGate(flight, durationMinutes);
+    // Find a suitable gate for a flight
+    public Gate findGateForFlight(
+            Flight flight, int durationMinutes) throws SQLException {
+
+        return gateAllocator.findSuitableGate(
+                flight, durationMinutes);
     }
 
-    // Assign gate to a flight and save assignment in database
-    public Gate assignGateToFlight(Flight flight, int durationMinutes)
-            throws SQLException {
+    // Assign gate to a flight and save assignment
+    public Gate assignGateToFlight(
+            Flight flight, int durationMinutes) throws SQLException {
 
         LocalDateTime startTime = flight.getScheduledTime();
         LocalDateTime endTime = startTime.plusMinutes(durationMinutes);
@@ -50,6 +57,10 @@ public class GateManager {
                 endTime
         );
 
-        return suitableGate;
+        // Refresh gate status after assignment
+        gateRepository.refreshGateStatuses();
+
+        return gateRepository.findGateById(
+                suitableGate.getGateId());
     }
 }
