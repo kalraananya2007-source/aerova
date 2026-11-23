@@ -70,4 +70,9 @@ public class GateManager {
 
         gateRepository.updateGateSize(gateId, gateSize);
     }
+
+    // Get gate report
+public String getGateReport() throws SQLException {
+    return gateRepository.getGateReport();
+}
 }
