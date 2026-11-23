@@ -26,6 +26,7 @@ public class GateMenu {
             System.out.println("4. Update Gate Status");
             System.out.println("5. Assign Gate to Flight");
             System.out.println("6. Update Gate Size");
+            System.out.println("7. Gate Reports");
             System.out.println("0. Exit");
             System.out.print("Enter your choice: ");
 
@@ -39,6 +40,7 @@ public class GateMenu {
                     case 4 -> updateGateStatus();
                     case 5 -> assignGateToFlight();
                     case 6 -> updateGateSize();
+                    case 7 -> viewGateReport();
                     case 0 -> System.out.println("Exiting Gate Menu...");
                     default -> System.out.println("Invalid choice!");
                 }
@@ -235,6 +237,14 @@ public class GateMenu {
             System.out.println("Assigned Until: "
                     + flight.getScheduledTime().plusMinutes(durationMinutes));
         }
+    }
+
+    // Display gate report
+    private void viewGateReport() throws SQLException {
+
+        String report = gateManager.getGateReport();
+
+        System.out.println(report);
     }
 
     // Display one gate with booking information
