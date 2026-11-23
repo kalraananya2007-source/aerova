@@ -4,6 +4,7 @@ package com.aerova.ui;
 import com.aerova.model.*;
 import com.aerova.service.*;
 
+import java.io.IOException;
 import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -20,6 +21,7 @@ public class FlightMenu {
     private final FlightPriorityManager priorityManager =
             new FlightPriorityManager();
     private final FlightAnalytics analytics = new FlightAnalytics();
+    private final FlightCsvService csvService = new FlightCsvService();
 
     public void showMenu() {
 
@@ -45,6 +47,12 @@ public class FlightMenu {
             System.out.println("16. View Delayed Flights");
             System.out.println("17. View Flights by Priority");
             System.out.println("18. View Flight Analytics");
+            System.out.println("19. Import Flights from CSV");
+            System.out.println("20. Export Flights to CSV");
+            System.out.println("21. Register New Aircraft");
+            System.out.println("22. View All Aircraft");
+            System.out.println("23. Search Aircraft by ID");
+            System.out.println("24. Update Aircraft Details");
             System.out.println("0. Exit");
             System.out.print("Enter your choice: ");
 
@@ -70,6 +78,12 @@ public class FlightMenu {
                     case 16 -> viewDelayedFlights();
                     case 17 -> viewFlightsByPriority();
                     case 18 -> viewAnalytics();
+                    case 19 -> importFlightsFromCsv();
+                    case 20 -> exportFlightsToCsv();
+                    case 21 -> registerAircraft();
+                    case 22 -> viewAllAircraft();
+                    case 23 -> searchAircraftById();
+                    case 24 -> updateAircraftDetails();
                     case 0 -> System.out.println("Exiting Flight Menu...");
                     default -> System.out.println("Invalid choice!");
                 }
@@ -77,7 +91,7 @@ public class FlightMenu {
             } catch (NumberFormatException e) {
                 System.out.println("Please enter a valid number.");
                 choice = -1;
-            } catch (SQLException | IllegalArgumentException e) {
+            } catch (SQLException | IOException | IllegalArgumentException e) {
                 System.out.println("Error: " + e.getMessage());
                 choice = -1;
             }
@@ -87,15 +101,12 @@ public class FlightMenu {
 
     // Display all flights
     private void viewFlights() throws SQLException {
-
         ArrayList<Flight> flights = flightManager.getAllFlights();
-
         displayFlights(flights);
     }
 
     // Search using database ID
     private void searchFlightById() throws SQLException {
-
         System.out.print("Enter Flight ID: ");
         int id = Integer.parseInt(scanner.nextLine());
 
@@ -110,7 +121,6 @@ public class FlightMenu {
 
     // Search using flight number
     private void searchFlightByNumber() throws SQLException {
-
         System.out.print("Enter Flight Number: ");
         String number = scanner.nextLine();
 
@@ -125,7 +135,6 @@ public class FlightMenu {
 
     // Search using airline name
     private void searchFlightsByAirline() throws SQLException {
-
         System.out.print("Enter Airline Name: ");
         String airline = scanner.nextLine();
 
@@ -134,7 +143,6 @@ public class FlightMenu {
 
     // Register a new flight
     private void addFlight() throws SQLException {
-
         System.out.print("Enter Flight Number: ");
         String number = scanner.nextLine();
 
@@ -143,8 +151,7 @@ public class FlightMenu {
 
         System.out.println("\nAvailable Aircraft:");
 
-        ArrayList<Aircraft> aircraftList =
-                aircraftManager.getAllAircraft();
+        ArrayList<Aircraft> aircraftList = aircraftManager.getAllAircraft();
 
         if (aircraftList.isEmpty()) {
             System.out.println("No aircraft registered.");
@@ -171,19 +178,16 @@ public class FlightMenu {
         );
 
         System.out.print("Enter Scheduled Time (yyyy-MM-ddTHH:mm): ");
-        LocalDateTime time =
-                LocalDateTime.parse(scanner.nextLine());
+        LocalDateTime time = LocalDateTime.parse(scanner.nextLine());
 
         System.out.print("Is this an emergency flight? (true/false): ");
-        boolean emergency =
-                Boolean.parseBoolean(scanner.nextLine());
+        boolean emergency = Boolean.parseBoolean(scanner.nextLine());
 
         Flight flight = new Flight(
                 number, aircraft, type, time, emergency
         );
 
         flight.setAirline(airline);
-
         flightManager.addFlight(flight);
 
         System.out.println("Flight registered successfully!");
@@ -191,7 +195,6 @@ public class FlightMenu {
 
     // Update flight status
     private void updateFlightStatus() throws SQLException {
-
         System.out.print("Enter Flight ID: ");
         int id = Integer.parseInt(scanner.nextLine());
 
@@ -207,13 +210,11 @@ public class FlightMenu {
         );
 
         flightManager.updateFlightStatus(id, status);
-
         System.out.println("Flight status updated successfully!");
     }
 
     // Update flight details
     private void updateFlightDetails() throws SQLException {
-
         System.out.print("Enter Flight ID: ");
         int id = Integer.parseInt(scanner.nextLine());
 
@@ -234,40 +235,32 @@ public class FlightMenu {
         flight.setAirline(scanner.nextLine());
 
         System.out.print("Enter new Scheduled Time (yyyy-MM-ddTHH:mm): ");
-        flight.setScheduledTime(
-                LocalDateTime.parse(scanner.nextLine())
-        );
+        flight.setScheduledTime(LocalDateTime.parse(scanner.nextLine()));
 
         flightManager.updateFlightDetails(flight);
-
         System.out.println("Flight details updated successfully!");
     }
 
     // Cancel flight without deleting its record
     private void cancelFlight() throws SQLException {
-
         System.out.print("Enter Flight ID: ");
         int id = Integer.parseInt(scanner.nextLine());
 
         flightManager.cancelFlight(id);
-
         System.out.println("Flight cancelled successfully!");
     }
 
     // Permanently delete flight
     private void deleteFlight() throws SQLException {
-
         System.out.print("Enter Flight ID: ");
         int id = Integer.parseInt(scanner.nextLine());
 
         flightManager.deleteFlight(id);
-
         System.out.println("Flight deleted successfully!");
     }
 
     // Filter flights by status
     private void filterFlightsByStatus() throws SQLException {
-
         System.out.println("Available Statuses:");
 
         for (FlightStatus status : FlightStatus.values()) {
@@ -284,42 +277,34 @@ public class FlightMenu {
 
     // Sort flights by scheduled time
     private void sortFlightsByTime() throws SQLException {
-
         System.out.println("Flights sorted by scheduled time:");
-
         displayFlights(flightManager.sortByScheduledTime());
     }
 
     // View scheduled arrivals
     private void viewScheduledArrivals() throws SQLException {
-
         displayFlights(flightScheduler.getScheduledArrivals());
     }
 
     // View scheduled departures
     private void viewScheduledDepartures() throws SQLException {
-
         displayFlights(flightScheduler.getScheduledDepartures());
     }
 
     // Change scheduled time
     private void rescheduleFlight() throws SQLException {
-
         System.out.print("Enter Flight ID: ");
         int id = Integer.parseInt(scanner.nextLine());
 
         System.out.print("Enter new Scheduled Time (yyyy-MM-ddTHH:mm): ");
-        LocalDateTime newTime =
-                LocalDateTime.parse(scanner.nextLine());
+        LocalDateTime newTime = LocalDateTime.parse(scanner.nextLine());
 
         flightScheduler.updateScheduledTime(id, newTime);
-
         System.out.println("Flight rescheduled successfully!");
     }
 
     // Record flight delay
     private void recordFlightDelay() throws SQLException {
-
         System.out.print("Enter Flight ID: ");
         int id = Integer.parseInt(scanner.nextLine());
 
@@ -327,19 +312,16 @@ public class FlightMenu {
         int minutes = Integer.parseInt(scanner.nextLine());
 
         flightScheduler.updateFlightDelay(id, minutes);
-
         System.out.println("Flight delay recorded successfully!");
     }
 
     // Display delayed flights
     private void viewDelayedFlights() throws SQLException {
-
         displayFlights(flightScheduler.getDelayedFlights());
     }
 
     // Display flights according to priority
     private void viewFlightsByPriority() throws SQLException {
-
         ArrayList<Flight> flights = flightManager.getAllFlights();
 
         PriorityQueue<Flight> queue =
@@ -365,7 +347,6 @@ public class FlightMenu {
 
     // Display flight analytics
     private void viewAnalytics() throws SQLException {
-
         ArrayList<Flight> flights = flightManager.getAllFlights();
 
         System.out.println("\n========== FLIGHT ANALYTICS ==========");
@@ -401,9 +382,28 @@ public class FlightMenu {
         );
     }
 
+    // Import flights from CSV file
+    private void importFlightsFromCsv() throws SQLException, IOException {
+        System.out.print("Enter CSV file path: ");
+        String filePath = scanner.nextLine();
+
+        int imported = csvService.importFlights(filePath);
+
+        System.out.println(imported + " flights imported successfully!");
+    }
+
+    // Export flights to CSV file
+    private void exportFlightsToCsv() throws SQLException, IOException {
+        System.out.print("Enter destination CSV file path: ");
+        String filePath = scanner.nextLine();
+
+        csvService.exportFlights(filePath);
+
+        System.out.println("Flights exported successfully!");
+    }
+
     // Display multiple flights
     private void displayFlights(ArrayList<Flight> flights) {
-
         if (flights == null || flights.isEmpty()) {
             System.out.println("No flights found.");
             return;
@@ -416,7 +416,6 @@ public class FlightMenu {
 
     // Display one flight
     private void displayFlight(Flight flight) {
-
         System.out.println("\n--------------------------------");
         System.out.println("Flight ID: " + flight.getFlightId());
         System.out.println("Flight Number: " + flight.getFlightNumber());
@@ -435,4 +434,93 @@ public class FlightMenu {
         System.out.println("Delay: " + flight.getDelayMinutes() + " minutes");
         System.out.println("--------------------------------");
     }
+
+    // Register a new aircraft
+private void registerAircraft() throws SQLException {
+    System.out.print("Enter Registration Number: ");
+    String registration = scanner.nextLine();
+
+    System.out.print("Enter Aircraft Model: ");
+    String model = scanner.nextLine();
+
+    System.out.print("Enter Aircraft Size (SMALL/MEDIUM/LARGE): ");
+    AircraftSize size = AircraftSize.valueOf(
+            scanner.nextLine().trim().toUpperCase()
+    );
+
+    System.out.print("Enter Aircraft Capacity: ");
+    int capacity = Integer.parseInt(scanner.nextLine());
+
+    Aircraft aircraft = new Aircraft(
+            registration, model, size, capacity
+    );
+
+    aircraftManager.addAircraft(aircraft);
+    System.out.println("Aircraft registered successfully!");
+}
+
+// View all aircraft
+private void viewAllAircraft() throws SQLException {
+    ArrayList<Aircraft> aircraftList = aircraftManager.getAllAircraft();
+
+    if (aircraftList.isEmpty()) {
+        System.out.println("No aircraft found.");
+        return;
+    }
+
+    for (Aircraft aircraft : aircraftList) {
+        System.out.println("Aircraft ID: " + aircraft.getAircraftId());
+        System.out.println(aircraft);
+        System.out.println("Size: " + aircraft.getAircraftSize());
+        System.out.println("----------------------");
+    }
+}
+
+// Search aircraft by ID
+private void searchAircraftById() throws SQLException {
+    System.out.print("Enter Aircraft ID: ");
+    int id = Integer.parseInt(scanner.nextLine());
+
+    Aircraft aircraft = aircraftManager.getAircraftById(id);
+
+    if (aircraft == null) {
+        System.out.println("Aircraft not found.");
+    } else {
+        System.out.println("Aircraft ID: " + aircraft.getAircraftId());
+        System.out.println(aircraft);
+        System.out.println("Size: " + aircraft.getAircraftSize());
+    }
+}
+
+// Update aircraft details
+private void updateAircraftDetails() throws SQLException {
+    System.out.print("Enter Aircraft ID: ");
+    int id = Integer.parseInt(scanner.nextLine());
+
+    Aircraft aircraft = aircraftManager.getAircraftById(id);
+
+    if (aircraft == null) {
+        System.out.println("Aircraft not found.");
+        return;
+    }
+
+    System.out.print("Enter new Registration Number: ");
+    aircraft.setRegistrationNo(scanner.nextLine());
+
+    System.out.print("Enter new Aircraft Model: ");
+    aircraft.setAircraftModel(scanner.nextLine());
+
+    System.out.print("Enter new Aircraft Size (SMALL/MEDIUM/LARGE): ");
+    aircraft.setAircraftSize(
+            AircraftSize.valueOf(
+                    scanner.nextLine().trim().toUpperCase()
+            )
+    );
+
+    System.out.print("Enter new Capacity: ");
+    aircraft.setCapacity(Integer.parseInt(scanner.nextLine()));
+
+    aircraftManager.updateAircraft(aircraft);
+    System.out.println("Aircraft updated successfully!");
+}
 }

@@ -1,3 +1,4 @@
+
 package com.aerova.dao;
 
 import com.aerova.model.Aircraft;
@@ -21,8 +22,8 @@ public class FlightRepository {
     public void saveAircraft(Aircraft aircraft) throws SQLException {
 
         String sql = "INSERT INTO aircraft "
-                + "(registration_no, aircraft_model, aircraft_size) "
-                + "VALUES (?, ?, ?)";
+                + "(registration_no, aircraft_model, aircraft_size, capacity) "
+                + "VALUES (?, ?, ?, ?)";
 
         try (Connection con = DatabaseConnection.getConnection();
              PreparedStatement ps = con.prepareStatement(
@@ -31,6 +32,7 @@ public class FlightRepository {
             ps.setString(1, aircraft.getRegistrationNo());
             ps.setString(2, aircraft.getAircraftModel());
             ps.setString(3, aircraft.getAircraftSize().name());
+            ps.setInt(4, aircraft.getCapacity());
 
             ps.executeUpdate();
 
@@ -85,7 +87,7 @@ public class FlightRepository {
     public void updateAircraft(Aircraft aircraft) throws SQLException {
 
         String sql = "UPDATE aircraft SET registration_no = ?, "
-                + "aircraft_model = ?, aircraft_size = ? "
+                + "aircraft_model = ?, aircraft_size = ?, capacity = ? "
                 + "WHERE aircraft_id = ?";
 
         try (Connection con = DatabaseConnection.getConnection();
@@ -94,7 +96,8 @@ public class FlightRepository {
             ps.setString(1, aircraft.getRegistrationNo());
             ps.setString(2, aircraft.getAircraftModel());
             ps.setString(3, aircraft.getAircraftSize().name());
-            ps.setInt(4, aircraft.getAircraftId());
+            ps.setInt(4, aircraft.getCapacity());
+            ps.setInt(5, aircraft.getAircraftId());
 
             ps.executeUpdate();
         }
@@ -104,27 +107,30 @@ public class FlightRepository {
     public void saveFlight(Flight flight) throws SQLException {
 
         String sql = "INSERT INTO flights "
-                + "(flight_number, aircraft_id, flight_type, "
-                + "scheduled_time, actual_time, flight_status, is_emergency) "
-                + "VALUES (?, ?, ?, ?, ?, ?, ?)";
+                + "(flight_number, airline, aircraft_id, flight_type, "
+                + "scheduled_time, actual_time, delay_minutes, "
+                + "flight_status, is_emergency) "
+                + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
         try (Connection con = DatabaseConnection.getConnection();
              PreparedStatement ps = con.prepareStatement(
                      sql, Statement.RETURN_GENERATED_KEYS)) {
 
             ps.setString(1, flight.getFlightNumber());
-            ps.setInt(2, flight.getAircraft().getAircraftId());
-            ps.setString(3, flight.getFlightType().name());
-            ps.setTimestamp(4, Timestamp.valueOf(flight.getScheduledTime()));
+            ps.setString(2, flight.getAirline());
+            ps.setInt(3, flight.getAircraft().getAircraftId());
+            ps.setString(4, flight.getFlightType().name());
+            ps.setTimestamp(5, Timestamp.valueOf(flight.getScheduledTime()));
 
             if (flight.getActualTime() == null) {
-                ps.setNull(5, java.sql.Types.TIMESTAMP);
+                ps.setNull(6, java.sql.Types.TIMESTAMP);
             } else {
-                ps.setTimestamp(5, Timestamp.valueOf(flight.getActualTime()));
+                ps.setTimestamp(6, Timestamp.valueOf(flight.getActualTime()));
             }
 
-            ps.setString(6, flight.getStatus().name());
-            ps.setBoolean(7, flight.isEmergency());
+            ps.setInt(7, flight.getDelayMinutes());
+            ps.setString(8, flight.getStatus().name());
+            ps.setBoolean(9, flight.isEmergency());
 
             ps.executeUpdate();
 
@@ -179,27 +185,30 @@ public class FlightRepository {
     public void updateFlight(Flight flight) throws SQLException {
 
         String sql = "UPDATE flights SET flight_number = ?, "
-                + "aircraft_id = ?, flight_type = ?, scheduled_time = ?, "
-                + "actual_time = ?, flight_status = ?, is_emergency = ? "
+                + "airline = ?, aircraft_id = ?, flight_type = ?, "
+                + "scheduled_time = ?, actual_time = ?, delay_minutes = ?, "
+                + "flight_status = ?, is_emergency = ? "
                 + "WHERE flight_id = ?";
 
         try (Connection con = DatabaseConnection.getConnection();
              PreparedStatement ps = con.prepareStatement(sql)) {
 
             ps.setString(1, flight.getFlightNumber());
-            ps.setInt(2, flight.getAircraft().getAircraftId());
-            ps.setString(3, flight.getFlightType().name());
-            ps.setTimestamp(4, Timestamp.valueOf(flight.getScheduledTime()));
+            ps.setString(2, flight.getAirline());
+            ps.setInt(3, flight.getAircraft().getAircraftId());
+            ps.setString(4, flight.getFlightType().name());
+            ps.setTimestamp(5, Timestamp.valueOf(flight.getScheduledTime()));
 
             if (flight.getActualTime() == null) {
-                ps.setNull(5, java.sql.Types.TIMESTAMP);
+                ps.setNull(6, java.sql.Types.TIMESTAMP);
             } else {
-                ps.setTimestamp(5, Timestamp.valueOf(flight.getActualTime()));
+                ps.setTimestamp(6, Timestamp.valueOf(flight.getActualTime()));
             }
 
-            ps.setString(6, flight.getStatus().name());
-            ps.setBoolean(7, flight.isEmergency());
-            ps.setInt(8, flight.getFlightId());
+            ps.setInt(7, flight.getDelayMinutes());
+            ps.setString(8, flight.getStatus().name());
+            ps.setBoolean(9, flight.isEmergency());
+            ps.setInt(10, flight.getFlightId());
 
             ps.executeUpdate();
         }
@@ -225,7 +234,8 @@ public class FlightRepository {
                 rs.getInt("aircraft_id"),
                 rs.getString("registration_no"),
                 rs.getString("aircraft_model"),
-                AircraftSize.valueOf(rs.getString("aircraft_size"))
+                AircraftSize.valueOf(rs.getString("aircraft_size")),
+                rs.getInt("capacity")
         );
     }
 
@@ -241,9 +251,12 @@ public class FlightRepository {
 
         flight.setFlightId(rs.getInt("flight_id"));
         flight.setFlightNumber(rs.getString("flight_number"));
+        flight.setAirline(rs.getString("airline"));
         flight.setAircraft(aircraft);
+
         flight.setFlightType(
                 FlightType.valueOf(rs.getString("flight_type")));
+
         flight.setScheduledTime(
                 rs.getTimestamp("scheduled_time").toLocalDateTime());
 
@@ -253,8 +266,11 @@ public class FlightRepository {
             flight.setActualTime(actualTime.toLocalDateTime());
         }
 
+        flight.setDelayMinutes(rs.getInt("delay_minutes"));
+
         flight.setStatus(
                 FlightStatus.valueOf(rs.getString("flight_status")));
+
         flight.setEmergency(rs.getBoolean("is_emergency"));
 
         return flight;
@@ -280,4 +296,3 @@ public class FlightRepository {
         return null;
     }
 }
-
