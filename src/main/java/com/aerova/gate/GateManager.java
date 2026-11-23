@@ -63,4 +63,11 @@ public class GateManager {
         return gateRepository.findGateById(
                 suitableGate.getGateId());
     }
+
+    // Update gate size
+    public void updateGateSize(int gateId, String gateSize)
+            throws SQLException {
+
+        gateRepository.updateGateSize(gateId, gateSize);
+    }
 }
