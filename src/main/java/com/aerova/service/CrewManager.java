@@ -1,6 +1,7 @@
 
 package com.aerova.service;
 
+import com.aerova.dao.CrewRepository;
 import com.aerova.model.CrewSkill;
 import com.aerova.model.CrewStatus;
 import com.aerova.model.GroundCrew;
@@ -13,9 +14,16 @@ import java.util.Objects;
 public class CrewManager {
 
     private final Map<String, GroundCrew> crewMap;
+    private final CrewRepository crewRepository;
 
     public CrewManager() {
         this.crewMap = new LinkedHashMap<>();
+        this.crewRepository = new CrewRepository();
+
+        // Load existing crew members from MySQL
+        for (GroundCrew crew : crewRepository.getAllCrew()) {
+            crewMap.put(crew.getCrewId(), crew);
+        }
     }
 
     // Register a new crew member
@@ -24,15 +32,11 @@ public class CrewManager {
         Objects.requireNonNull(crew, "Crew cannot be null.");
 
         if (crew.getCrewId() == null || crew.getCrewId().isBlank()) {
-            throw new IllegalArgumentException(
-                    "Crew ID cannot be empty."
-            );
+            throw new IllegalArgumentException("Crew ID cannot be empty.");
         }
 
         if (crew.getName() == null || crew.getName().isBlank()) {
-            throw new IllegalArgumentException(
-                    "Crew name cannot be empty."
-            );
+            throw new IllegalArgumentException("Crew name cannot be empty.");
         }
 
         Objects.requireNonNull(
@@ -43,6 +47,13 @@ public class CrewManager {
         if (crewMap.containsKey(crew.getCrewId())) {
             throw new IllegalArgumentException(
                     "Crew ID already exists: " + crew.getCrewId()
+            );
+        }
+
+        // Save in MySQL first
+        if (!crewRepository.saveCrew(crew)) {
+            throw new IllegalStateException(
+                    "Could not save crew to database."
             );
         }
 
@@ -119,6 +130,14 @@ public class CrewManager {
             );
         }
 
+        // Update MySQL first
+        if (!crewRepository.updateCrewStatus(
+                crewId, CrewStatus.ASSIGNED.name())) {
+            throw new IllegalStateException(
+                    "Could not update crew status in database."
+            );
+        }
+
         crew.setStatus(CrewStatus.ASSIGNED);
         crew.setAssignedServiceId(serviceId.trim());
     }
@@ -137,6 +156,14 @@ public class CrewManager {
         if (crew.getStatus() != CrewStatus.ASSIGNED) {
             throw new IllegalStateException(
                     "Crew member is not currently assigned."
+            );
+        }
+
+        // Update MySQL first
+        if (!crewRepository.updateCrewStatus(
+                crewId, CrewStatus.AVAILABLE.name())) {
+            throw new IllegalStateException(
+                    "Could not release crew in database."
             );
         }
 

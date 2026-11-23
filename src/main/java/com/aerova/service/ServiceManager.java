@@ -1,6 +1,7 @@
 
 package com.aerova.service;
 
+import com.aerova.dao.ServiceRepository;
 import com.aerova.model.CrewSkill;
 import com.aerova.model.CrewStatus;
 import com.aerova.model.GroundCrew;
@@ -15,14 +16,49 @@ public class ServiceManager {
 
     private final ArrayList<GroundService> services;
     private final CrewManager crewManager;
+    private final ServiceRepository serviceRepository;
     private int serviceCounter;
 
     public ServiceManager(CrewManager crewManager) {
+
         this.services = new ArrayList<>();
+
         this.crewManager = Objects.requireNonNull(
                 crewManager, "CrewManager cannot be null."
         );
+
+        this.serviceRepository = new ServiceRepository();
         this.serviceCounter = 100;
+
+        // Load existing services from MySQL
+        for (GroundService service : serviceRepository.getAllServices()) {
+
+            services.add(service);
+
+            // Continue service numbering from existing records
+            try {
+                int number = Integer.parseInt(
+                        service.getServiceId().substring(2)
+                );
+                serviceCounter = Math.max(serviceCounter, number);
+            } catch (NumberFormatException | IndexOutOfBoundsException e) {
+                System.out.println(
+                        "Skipping invalid service ID: "
+                                + service.getServiceId()
+                );
+            }
+
+            // Restore assigned service ID in the crew object
+            String crewId = service.getAssignedCrewId();
+
+            if (crewId != null) {
+                GroundCrew crew = crewManager.getCrewById(crewId);
+
+                if (crew != null) {
+                    crew.setAssignedServiceId(service.getServiceId());
+                }
+            }
+        }
     }
 
     // Create a new ground service
@@ -36,13 +72,19 @@ public class ServiceManager {
 
         Objects.requireNonNull(type, "Service type cannot be null.");
 
-        serviceCounter++;
-
-        String serviceId = "SV" + serviceCounter;
+        String serviceId = "SV" + (++serviceCounter);
 
         GroundService service = new GroundService(
                 serviceId, flightId.trim(), type
         );
+
+        // Save in MySQL first
+        if (!serviceRepository.saveService(service)) {
+            serviceCounter--;
+            throw new IllegalStateException(
+                    "Could not save service to database."
+            );
+        }
 
         services.add(service);
 
@@ -92,22 +134,18 @@ public class ServiceManager {
         return result;
     }
 
-    // Find the required crew skill for a service
+    // Find required crew skill
     private CrewSkill getRequiredSkill(ServiceType type) {
 
         switch (type) {
             case BAGGAGE:
                 return CrewSkill.BAGGAGE;
-
             case CLEANING:
                 return CrewSkill.CLEANING;
-
             case REFUELING:
                 return CrewSkill.REFUELING;
-
             case MAINTENANCE:
                 return CrewSkill.MAINTENANCE;
-
             default:
                 throw new IllegalArgumentException(
                         "Unsupported service type."
@@ -140,13 +178,21 @@ public class ServiceManager {
             );
         }
 
+        if (service.getAssignedCrewId() != null) {
+            throw new IllegalStateException(
+                    "Service already has an assigned crew member."
+            );
+        }
+
         if (!crew.isAvailable()) {
             throw new IllegalStateException(
                     "Crew member is not available."
             );
         }
 
-        CrewSkill requiredSkill = getRequiredSkill(service.getServiceType());
+        CrewSkill requiredSkill = getRequiredSkill(
+                service.getServiceType()
+        );
 
         if (crew.getSkill() != requiredSkill) {
             throw new IllegalArgumentException(
@@ -154,11 +200,30 @@ public class ServiceManager {
             );
         }
 
-        crewManager.assignCrewToService(
-                crew.getCrewId(), service.getServiceId()
-        );
+        // Persist service-to-crew relationship
+        if (!serviceRepository.assignCrewToService(
+                service.getServiceId(), crew.getCrewId())) {
+            throw new IllegalStateException(
+                    "Could not save crew assignment in database."
+            );
+        }
 
-        service.setAssignedCrewId(crew.getCrewId());
+        try {
+            crewManager.assignCrewToService(
+                    crew.getCrewId(), service.getServiceId()
+            );
+
+            service.setAssignedCrewId(crew.getCrewId());
+
+        } catch (RuntimeException e) {
+
+            // Roll back service assignment if crew assignment fails
+            serviceRepository.assignCrewToService(
+                    service.getServiceId(), null
+            );
+
+            throw e;
+        }
     }
 
     // Start a service
@@ -184,6 +249,14 @@ public class ServiceManager {
             );
         }
 
+        // Update MySQL first
+        if (!serviceRepository.updateServiceStatus(
+                serviceId, ServiceStatus.IN_PROGRESS)) {
+            throw new IllegalStateException(
+                    "Could not update service status in database."
+            );
+        }
+
         service.setStatus(ServiceStatus.IN_PROGRESS);
     }
 
@@ -206,11 +279,28 @@ public class ServiceManager {
 
         String crewId = service.getAssignedCrewId();
 
-        service.setStatus(ServiceStatus.COMPLETED);
-
+        // Release crew first
         if (crewId != null) {
             crewManager.releaseCrew(crewId);
         }
+
+        // Persist completed status
+        if (!serviceRepository.updateServiceStatus(
+                serviceId, ServiceStatus.COMPLETED)) {
+
+            // Restore crew assignment if database update fails
+            if (crewId != null) {
+                crewManager.assignCrewToService(
+                        crewId, service.getServiceId()
+                );
+            }
+
+            throw new IllegalStateException(
+                    "Could not complete service in database."
+            );
+        }
+
+        service.setStatus(ServiceStatus.COMPLETED);
     }
 
     // Get all pending services
@@ -241,4 +331,3 @@ public class ServiceManager {
         return result;
     }
 }
-

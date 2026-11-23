@@ -53,11 +53,31 @@ CREATE TABLE IF NOT EXISTS gates (
     gate_status ENUM('AVAILABLE', 'OCCUPIED', 'MAINTENANCE') NOT NULL DEFAULT 'AVAILABLE'
 );
 
-CREATE TABLE IF NOT EXISTS ground_crew (
-    crew_id INT AUTO_INCREMENT PRIMARY KEY,
-    crew_name VARCHAR(100) NOT NULL,
-    crew_role VARCHAR(60) NOT NULL,
-    crew_status ENUM('AVAILABLE', 'ASSIGNED', 'OFF_DUTY') NOT NULL DEFAULT 'AVAILABLE'
+CREATE TABLE IF NOT EXISTS ground_services (
+    service_id VARCHAR(10) PRIMARY KEY,
+    flight_id INT NOT NULL,
+    service_type ENUM(
+        'BAGGAGE',
+        'CLEANING',
+        'REFUELING',
+        'MAINTENANCE'
+    ) NOT NULL,
+    service_status ENUM(
+        'PENDING',
+        'IN_PROGRESS',
+        'COMPLETED'
+    ) NOT NULL DEFAULT 'PENDING',
+    assigned_crew_id INT NULL,
+
+    CONSTRAINT fk_ground_service_flight
+        FOREIGN KEY (flight_id)
+        REFERENCES flights(flight_id),
+
+    CONSTRAINT fk_ground_service_crew
+        FOREIGN KEY (assigned_crew_id)
+        REFERENCES ground_crew(crew_id)
+        ON DELETE SET NULL
+        ON UPDATE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS gate_assignments (
