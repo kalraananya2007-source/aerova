@@ -79,6 +79,75 @@ public class GateRepository {
         return gateList;
     }
 
+    // Automatically refresh all gate statuses based on booking times
+    public void refreshGateStatuses() throws SQLException {
+
+        LocalDateTime now = LocalDateTime.now();
+
+        ArrayList<Gate> gates = findAllGates();
+
+        String sql = "SELECT assigned_from, assigned_until "
+                + "FROM gate_assignments "
+                + "WHERE gate_id = ? "
+                + "AND assignment_status IN ('SCHEDULED', 'ACTIVE')";
+
+        for (Gate gate : gates) {
+
+            // Never overwrite maintenance status
+            if (gate.getStatus() == GateStatus.MAINTENANCE) {
+                continue;
+            }
+
+            boolean currentlyOccupied = false;
+            boolean hasFutureBooking = false;
+
+            try (Connection con = DatabaseConnection.getConnection();
+                 PreparedStatement ps = con.prepareStatement(sql)) {
+
+                ps.setInt(1, gate.getGateId());
+
+                try (ResultSet rs = ps.executeQuery()) {
+
+                    while (rs.next()) {
+
+                        // Read DATETIME directly as text to avoid timezone shift
+                        LocalDateTime start = parseDbDateTime(
+                                rs.getString("assigned_from"));
+
+                        LocalDateTime end = parseDbDateTime(
+                                rs.getString("assigned_until"));
+
+                        // Booking is currently active
+                        if (!now.isBefore(start) && now.isBefore(end)) {
+                            currentlyOccupied = true;
+                        }
+
+                        // Booking is in the future
+                        else if (now.isBefore(start)) {
+                            hasFutureBooking = true;
+                        }
+                    }
+                }
+            }
+
+            // Determine new status
+            GateStatus newStatus;
+
+            if (currentlyOccupied) {
+                newStatus = GateStatus.OCCUPIED;
+            } else if (hasFutureBooking) {
+                newStatus = GateStatus.RESERVED;
+            } else {
+                newStatus = GateStatus.AVAILABLE;
+            }
+
+            // Update database only if status actually changed
+            if (gate.getStatus() != newStatus) {
+                updateGateStatus(gate.getGateId(), newStatus);
+            }
+        }
+    }
+
     // Get scheduled assignments for a gate
     public String getGateBookingInfo(int gateId) throws SQLException {
 
@@ -102,9 +171,9 @@ public class GateRepository {
                     info.append("Flight: ")
                             .append(rs.getString("flight_number"))
                             .append(" | From: ")
-                            .append(rs.getTimestamp("assigned_from"))
+                            .append(rs.getString("assigned_from"))
                             .append(" | Until: ")
-                            .append(rs.getTimestamp("assigned_until"))
+                            .append(rs.getString("assigned_until"))
                             .append(System.lineSeparator());
                 }
             }
@@ -164,8 +233,8 @@ public class GateRepository {
 
             ps.executeUpdate();
 
-            // Automatically mark gate as RESERVED after booking
-            updateGateStatus(gateId, GateStatus.RESERVED);
+            // Status will be refreshed by GateManager after saving.
+            // This avoids overwriting MAINTENANCE status here.
 
             try (ResultSet rs = ps.getGeneratedKeys()) {
                 if (rs.next()) {
@@ -175,6 +244,12 @@ public class GateRepository {
         }
 
         return -1;
+    }
+
+    // Convert database DATETIME text into LocalDateTime without timezone shift
+    private LocalDateTime parseDbDateTime(String value) {
+
+        return LocalDateTime.parse(value.replace(" ", "T"));
     }
 
     // Convert database row to Gate object
