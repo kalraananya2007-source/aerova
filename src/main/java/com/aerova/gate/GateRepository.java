@@ -1,3 +1,4 @@
+
 package com.aerova.gate;
 
 import java.sql.Connection;
@@ -197,6 +198,30 @@ public class GateRepository {
              PreparedStatement ps = con.prepareStatement(sql)) {
 
             ps.setString(1, status.name());
+            ps.setInt(2, gateId);
+
+            ps.executeUpdate();
+        }
+    }
+
+    // NEW: Update gate size
+    public void updateGateSize(int gateId, String gateSize)
+            throws SQLException {
+
+        if (!gateSize.equals("SMALL")
+                && !gateSize.equals("MEDIUM")
+                && !gateSize.equals("LARGE")) {
+
+            throw new IllegalArgumentException("Invalid gate size.");
+        }
+
+        String sql = "UPDATE gates SET gate_size = ? "
+                + "WHERE gate_id = ?";
+
+        try (Connection con = DatabaseConnection.getConnection();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+
+            ps.setString(1, gateSize);
             ps.setInt(2, gateId);
 
             ps.executeUpdate();
