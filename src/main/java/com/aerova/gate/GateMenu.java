@@ -1,4 +1,3 @@
-
 package com.aerova.gate;
 
 import java.sql.SQLException;
@@ -26,6 +25,7 @@ public class GateMenu {
             System.out.println("3. Add New Gate");
             System.out.println("4. Update Gate Status");
             System.out.println("5. Assign Gate to Flight");
+            System.out.println("6. Update Gate Size");
             System.out.println("0. Exit");
             System.out.print("Enter your choice: ");
 
@@ -38,6 +38,7 @@ public class GateMenu {
                     case 3 -> addGate();
                     case 4 -> updateGateStatus();
                     case 5 -> assignGateToFlight();
+                    case 6 -> updateGateSize();
                     case 0 -> System.out.println("Exiting Gate Menu...");
                     default -> System.out.println("Invalid choice!");
                 }
@@ -149,6 +150,51 @@ public class GateMenu {
         System.out.println("Gate status updated successfully!");
     }
 
+    // Update size of an existing gate
+    private void updateGateSize() throws SQLException {
+
+        System.out.print("Enter Gate ID: ");
+        int gateId = Integer.parseInt(scanner.nextLine());
+
+        Gate gate = gateManager.getGateById(gateId);
+
+        if (gate == null) {
+            System.out.println("Gate not found.");
+            return;
+        }
+
+        System.out.println("\nCurrent Gate Details:");
+        System.out.println("Gate Code: " + gate.getGateCode());
+        System.out.println("Current Gate Size: " + gate.getGateSize());
+        System.out.println("Current Gate Status: " + gate.getStatus());
+
+        System.out.println("\nAvailable Gate Sizes:");
+        System.out.println("1. SMALL");
+        System.out.println("2. MEDIUM");
+        System.out.println("3. LARGE");
+
+        System.out.print("Choose new gate size: ");
+        int sizeChoice = Integer.parseInt(scanner.nextLine());
+
+        String newGateSize;
+
+        switch (sizeChoice) {
+            case 1 -> newGateSize = "SMALL";
+            case 2 -> newGateSize = "MEDIUM";
+            case 3 -> newGateSize = "LARGE";
+            default -> {
+                System.out.println("Invalid gate size choice.");
+                return;
+            }
+        }
+
+        gateManager.updateGateSize(gateId, newGateSize);
+
+        System.out.println("\nGate size updated successfully!");
+        System.out.println("Updated Gate Size: " + newGateSize);
+        System.out.println("Gate Status remains: " + gate.getStatus());
+    }
+
     // Automatically assign a suitable gate to a flight
     private void assignGateToFlight() throws SQLException {
 
@@ -191,19 +237,19 @@ public class GateMenu {
         }
     }
 
-    // Display one gate
-   // Display one gate with booking information
-private void displayGate(Gate gate) throws SQLException {
+    // Display one gate with booking information
+    private void displayGate(Gate gate) throws SQLException {
 
-    System.out.println("\n--------------------------------");
-    System.out.println("Gate ID: " + gate.getGateId());
-    System.out.println("Gate Code: " + gate.getGateCode());
-    System.out.println("Gate Size: " + gate.getGateSize());
-    System.out.println("Gate Status: " + gate.getStatus());
+        System.out.println("\n--------------------------------");
+        System.out.println("Gate ID: " + gate.getGateId());
+        System.out.println("Gate Code: " + gate.getGateCode());
+        System.out.println("Gate Size: " + gate.getGateSize());
+        System.out.println("Gate Status: " + gate.getStatus());
 
-    System.out.println("\n--- Scheduled Bookings ---");
-    System.out.println(gateRepository.getGateBookingInfo(gate.getGateId()));
+        System.out.println("\n--- Scheduled Bookings ---");
+        System.out.println(
+                gateRepository.getGateBookingInfo(gate.getGateId()));
 
-    System.out.println("--------------------------------");
-}
+        System.out.println("--------------------------------");
+    }
 }
