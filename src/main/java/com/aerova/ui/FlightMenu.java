@@ -3,7 +3,7 @@ package com.aerova.ui;
 import com.aerova.model.*;
 import com.aerova.service.*;
 import com.aerova.taxiway.*;
-
+import com.aerova.gate.GateMenu;
 import java.io.IOException;
 import java.sql.SQLException;
 import java.time.LocalDateTime;
@@ -14,7 +14,7 @@ import java.util.Scanner;
 public class FlightMenu {
 
     private final Scanner scanner = new Scanner(System.in);
-
+private final GateMenu gateMenu = new GateMenu(scanner);
     // Existing flight managers
     private final FlightManager flightManager = new FlightManager();
     private final AircraftManager aircraftManager = new AircraftManager();
@@ -88,6 +88,8 @@ public class FlightMenu {
             System.out.println("37. Assign Crew to Service");
             System.out.println("38. Start / Complete Service");
             System.out.println("39. Check Aircraft Turnaround Readiness");
+            System.out.println("\n========== GATE MANAGEMENT ==========");
+System.out.println("40. Open Gate Management");
 
             System.out.println("\n0. Exit");
 
@@ -144,7 +146,7 @@ public class FlightMenu {
                     case 37 -> assignCrewToService();
                     case 38 -> manageServiceStatus();
                     case 39 -> checkTurnaroundReadiness();
-
+                    case 40 -> gateMenu.showMenu();
                     case 0 ->
                             System.out.println("Exiting Aerova Application...");
 
