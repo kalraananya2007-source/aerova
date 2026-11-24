@@ -19,9 +19,9 @@ public final class DatabaseConnection {
     }
 
     public static Connection getConnection() throws SQLException {
-        String url = getEnvironmentValue("AEROVA_DB_URL", DEFAULT_URL);
+        String url = getEnvironmentValue("AEROVA_DB_URL", "jdbc:mysql://localhost:3306/aerova_db?serverTimezone=UTC");
         String user = getEnvironmentValue("AEROVA_DB_USER", "root");
-        String password = getEnvironmentValue("AEROVA_DB_PASSWORD", "");
+        String password = getEnvironmentValue("AEROVA_DB_PASSWORD", "Shreeram@04");
 
         return DriverManager.getConnection(url, user, password);
     }
