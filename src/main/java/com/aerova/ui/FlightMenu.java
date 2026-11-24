@@ -3,6 +3,7 @@ package com.aerova.ui;
 
 import com.aerova.model.*;
 import com.aerova.service.*;
+import com.aerova.taxiway.*;
 
 import java.sql.SQLException;
 import java.time.LocalDateTime;
@@ -14,12 +15,16 @@ public class FlightMenu {
 
     private final Scanner scanner = new Scanner(System.in);
 
+    // Existing flight managers
     private final FlightManager flightManager = new FlightManager();
     private final AircraftManager aircraftManager = new AircraftManager();
     private final FlightScheduler flightScheduler = new FlightScheduler();
     private final FlightPriorityManager priorityManager =
             new FlightPriorityManager();
     private final FlightAnalytics analytics = new FlightAnalytics();
+
+    // Aircraft movement manager
+    private AircraftMovementManager movementManager;
 
     public void showMenu() {
 
@@ -45,6 +50,15 @@ public class FlightMenu {
             System.out.println("16. View Delayed Flights");
             System.out.println("17. View Flights by Priority");
             System.out.println("18. View Flight Analytics");
+
+            System.out.println("\n========== AIRCRAFT MOVEMENT ==========");
+            System.out.println("19. Plan Aircraft Movement");
+            System.out.println("20. Start Aircraft Movement");
+            System.out.println("21. Move Aircraft to Next Node");
+            System.out.println("22. Stop Aircraft Movement");
+            System.out.println("23. View Movement Status");
+            System.out.println("24. Run Aircraft Simulation");
+
             System.out.println("0. Exit");
             System.out.print("Enter your choice: ");
 
@@ -52,6 +66,8 @@ public class FlightMenu {
                 choice = Integer.parseInt(scanner.nextLine());
 
                 switch (choice) {
+
+                    // Existing flight operations
                     case 1 -> viewFlights();
                     case 2 -> searchFlightById();
                     case 3 -> searchFlightByNumber();
@@ -70,20 +86,43 @@ public class FlightMenu {
                     case 16 -> viewDelayedFlights();
                     case 17 -> viewFlightsByPriority();
                     case 18 -> viewAnalytics();
-                    case 0 -> System.out.println("Exiting Flight Menu...");
-                    default -> System.out.println("Invalid choice!");
+
+                    // Aircraft movement operations
+                    case 19 -> planAircraftMovement();
+                    case 20 -> startAircraftMovement();
+                    case 21 -> moveAircraftToNextNode();
+                    case 22 -> stopAircraftMovement();
+                    case 23 -> viewMovementStatus();
+
+                    // Aircraft simulation
+                    case 24 -> runAircraftSimulation();
+
+                    case 0 ->
+                            System.out.println("Exiting Aerova Application...");
+
+                    default ->
+                            System.out.println("Invalid choice!");
                 }
 
             } catch (NumberFormatException e) {
                 System.out.println("Please enter a valid number.");
                 choice = -1;
-            } catch (SQLException | IllegalArgumentException e) {
+
+            } catch (SQLException e) {
+                System.out.println("Database Error: " + e.getMessage());
+                choice = -1;
+
+            } catch (RuntimeException e) {
                 System.out.println("Error: " + e.getMessage());
                 choice = -1;
             }
 
         } while (choice != 0);
     }
+
+    // =========================================
+    // FLIGHT MANAGEMENT
+    // =========================================
 
     // Display all flights
     private void viewFlights() throws SQLException {
@@ -434,5 +473,188 @@ public class FlightMenu {
         System.out.println("Emergency: " + flight.isEmergency());
         System.out.println("Delay: " + flight.getDelayMinutes() + " minutes");
         System.out.println("--------------------------------");
+    }
+
+    // =========================================
+    // AIRCRAFT MOVEMENT MANAGEMENT
+    // =========================================
+
+    // Initialize taxiway network and movement manager
+    private void initializeMovementManager() {
+
+        if (movementManager != null) {
+            return;
+        }
+
+        try {
+            TaxiwayNetwork network = new TaxiwayNetwork();
+
+            network.loadNetworkFromDatabase();
+
+            RouteFinder routeFinder = new RouteFinder(network);
+
+            movementManager =
+                    new AircraftMovementManager(routeFinder);
+
+            System.out.println("Movement system initialized.");
+
+        } catch (Exception e) {
+            System.out.println(
+                    "Unable to initialize movement system: "
+                            + e.getMessage());
+        }
+    }
+
+    // Plan aircraft movement
+    private void planAircraftMovement() throws SQLException {
+
+        System.out.print("Enter Flight ID: ");
+        int flightId = Integer.parseInt(scanner.nextLine());
+
+        Flight flight = flightManager.getFlightById(flightId);
+
+        if (flight == null) {
+            System.out.println("Flight not found.");
+            return;
+        }
+
+        initializeMovementManager();
+
+        if (movementManager == null) {
+            return;
+        }
+
+        System.out.print("Enter Source Taxiway Node ID: ");
+        String sourceId = scanner.nextLine().trim();
+
+        System.out.print("Enter Destination Taxiway Node ID: ");
+        String destinationId = scanner.nextLine().trim();
+
+        movementManager.planMovement(
+                flight, sourceId, destinationId);
+    }
+
+    // Start aircraft movement
+    private void startAircraftMovement() {
+
+        if (movementManager == null) {
+            System.out.println("Plan a movement first.");
+            return;
+        }
+
+        System.out.print("Enter Flight ID: ");
+        int flightId = Integer.parseInt(scanner.nextLine());
+
+        movementManager.startMovement(flightId);
+    }
+
+    // Move aircraft to the next taxiway node
+    private void moveAircraftToNextNode() {
+
+        if (movementManager == null) {
+            System.out.println("Plan a movement first.");
+            return;
+        }
+
+        System.out.print("Enter Flight ID: ");
+        int flightId = Integer.parseInt(scanner.nextLine());
+
+        TaxiwayNode node =
+                movementManager.moveToNextNode(flightId);
+
+        System.out.println("Current Location: " + node);
+
+        System.out.println(
+                "Movement Status: "
+                        + movementManager.getMovementStatus(flightId));
+    }
+
+    // Stop aircraft movement
+    private void stopAircraftMovement() {
+
+        if (movementManager == null) {
+            System.out.println("Plan a movement first.");
+            return;
+        }
+
+        System.out.print("Enter Flight ID: ");
+        int flightId = Integer.parseInt(scanner.nextLine());
+
+        movementManager.stopMovement(flightId);
+    }
+
+    // View current movement status
+    private void viewMovementStatus() {
+
+        if (movementManager == null) {
+            System.out.println("No movement planned in this session.");
+            return;
+        }
+
+        System.out.print("Enter Flight ID: ");
+        int flightId = Integer.parseInt(scanner.nextLine());
+
+        System.out.println("\n========== AIRCRAFT MOVEMENT ==========");
+
+        System.out.println(
+                "Current Location: "
+                        + movementManager.getCurrentNode(flightId));
+
+        System.out.println(
+                "Movement Status: "
+                        + movementManager.getMovementStatus(flightId));
+
+        System.out.println("Planned Route:");
+
+        for (TaxiwayNode node :
+                movementManager.getFlightRoute(flightId)) {
+
+            System.out.println(
+                    " -> " + node.getNodeName()
+                            + " (" + node.getNodeId() + ")");
+        }
+
+        System.out.println("=======================================");
+    }
+
+    // =========================================
+    // AIRCRAFT SIMULATION - MULTITHREADING
+    // =========================================
+
+    // Run aircraft simulation in a separate thread
+    private void runAircraftSimulation() {
+
+        if (movementManager == null) {
+            System.out.println(
+                    "Please plan an aircraft movement first (Option 19).");
+            return;
+        }
+
+        System.out.print("Enter Flight ID for simulation: ");
+        int flightId = Integer.parseInt(scanner.nextLine());
+
+        if (movementManager.getMovementStatus(flightId) == null) {
+            System.out.println(
+                    "No movement found for this flight in the current session.");
+            return;
+        }
+
+        if (movementManager.getMovementStatus(flightId)
+                != MovementStatus.WAITING) {
+            System.out.println(
+                    "Simulation requires a movement with WAITING status.");
+            return;
+        }
+
+        AircraftSimulation simulation =
+                new AircraftSimulation(flightId, movementManager);
+
+        Thread simulationThread =
+                new Thread(simulation, "Aircraft-Simulation-" + flightId);
+
+        simulationThread.start();
+
+        System.out.println(
+                "Aircraft simulation started in a separate thread.");
     }
 }
