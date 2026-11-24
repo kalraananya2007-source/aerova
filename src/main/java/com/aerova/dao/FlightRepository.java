@@ -115,6 +115,7 @@ public class FlightRepository {
             ps.setString(2, flight.getAirline());
             ps.setInt(3, flight.getAircraft().getAircraftId());
             ps.setString(4, flight.getFlightType().name());
+
             ps.setTimestamp(5,
                     Timestamp.valueOf(flight.getScheduledTime()));
 
@@ -193,6 +194,7 @@ public class FlightRepository {
             ps.setString(2, flight.getAirline());
             ps.setInt(3, flight.getAircraft().getAircraftId());
             ps.setString(4, flight.getFlightType().name());
+
             ps.setTimestamp(5,
                     Timestamp.valueOf(flight.getScheduledTime()));
 
@@ -264,11 +266,12 @@ public class FlightRepository {
             flight.setActualTime(actualTime.toLocalDateTime());
         }
 
+        flight.setDelayMinutes(rs.getInt("delay_minutes"));
+
         flight.setStatus(
                 FlightStatus.valueOf(rs.getString("flight_status")));
 
         flight.setEmergency(rs.getBoolean("is_emergency"));
-        flight.setDelayMinutes(rs.getInt("delay_minutes"));
 
         return flight;
     }

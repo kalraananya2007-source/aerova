@@ -1,9 +1,15 @@
--- Aerova initial MySQL schema
--- Run this script in MySQL Workbench or using the MySQL CLI.
+
+-- =========================================
+-- AEROVA AIRPORT MANAGEMENT SYSTEM
+-- MASTER MYSQL DATABASE SCHEMA
+-- =========================================
 
 CREATE DATABASE IF NOT EXISTS aerova_db;
 USE aerova_db;
 
+-- =========================================
+-- 1. AIRCRAFT
+-- =========================================
 
 CREATE TABLE IF NOT EXISTS aircraft (
     aircraft_id INT AUTO_INCREMENT PRIMARY KEY,
@@ -14,7 +20,9 @@ CREATE TABLE IF NOT EXISTS aircraft (
     capacity INT NOT NULL
 );
 
-
+-- =========================================
+-- 2. FLIGHTS
+-- =========================================
 
 CREATE TABLE IF NOT EXISTS flights (
     flight_id INT AUTO_INCREMENT PRIMARY KEY,
@@ -29,9 +37,7 @@ CREATE TABLE IF NOT EXISTS flights (
         'LANDED',
         'TAXIING',
         'AT_GATE',
-
         'DEPARTED',
-
         'CANCELLED'
     ) NOT NULL DEFAULT 'SCHEDULED',
 
@@ -44,12 +50,23 @@ CREATE TABLE IF NOT EXISTS flights (
         REFERENCES aircraft(aircraft_id)
 );
 
+-- =========================================
+-- 3. RUNWAYS
+-- =========================================
 
 CREATE TABLE IF NOT EXISTS runways (
     runway_id INT AUTO_INCREMENT PRIMARY KEY,
     runway_code VARCHAR(20) NOT NULL UNIQUE,
-    runway_status ENUM('AVAILABLE', 'IN_USE', 'MAINTENANCE') NOT NULL DEFAULT 'AVAILABLE'
+    runway_status ENUM(
+        'AVAILABLE',
+        'IN_USE',
+        'MAINTENANCE'
+    ) NOT NULL DEFAULT 'AVAILABLE'
 );
+
+-- =========================================
+-- 4. RUNWAY ASSIGNMENTS
+-- =========================================
 
 CREATE TABLE IF NOT EXISTS runway_assignments (
     assignment_id INT AUTO_INCREMENT PRIMARY KEY,
@@ -57,24 +74,64 @@ CREATE TABLE IF NOT EXISTS runway_assignments (
     runway_id INT NOT NULL,
     start_time DATETIME NOT NULL,
     end_time DATETIME NOT NULL,
-    assignment_status ENUM('SCHEDULED', 'ACTIVE', 'COMPLETED', 'CANCELLED') NOT NULL DEFAULT 'SCHEDULED',
-    CONSTRAINT fk_runway_assignment_flight FOREIGN KEY (flight_id) REFERENCES flights(flight_id),
-    CONSTRAINT fk_runway_assignment_runway FOREIGN KEY (runway_id) REFERENCES runways(runway_id)
+
+    assignment_status ENUM(
+        'SCHEDULED',
+        'ACTIVE',
+        'COMPLETED',
+        'CANCELLED'
+    ) NOT NULL DEFAULT 'SCHEDULED',
+
+    CONSTRAINT fk_runway_assignment_flight
+        FOREIGN KEY (flight_id)
+        REFERENCES flights(flight_id),
+
+    CONSTRAINT fk_runway_assignment_runway
+        FOREIGN KEY (runway_id)
+        REFERENCES runways(runway_id)
 );
+
+-- =========================================
+-- 5. GATES
+-- =========================================
 
 CREATE TABLE IF NOT EXISTS gates (
     gate_id INT AUTO_INCREMENT PRIMARY KEY,
     gate_code VARCHAR(20) NOT NULL UNIQUE,
     gate_size ENUM('SMALL', 'MEDIUM', 'LARGE') NOT NULL,
-    gate_status ENUM('AVAILABLE', 'OCCUPIED', 'MAINTENANCE') NOT NULL DEFAULT 'AVAILABLE'
+
+    gate_status ENUM(
+        'AVAILABLE',
+        'OCCUPIED',
+        'MAINTENANCE'
+    ) NOT NULL DEFAULT 'AVAILABLE'
 );
 
+-- =========================================
+-- 6. GROUND CREW
+-- =========================================
+
 CREATE TABLE IF NOT EXISTS ground_crew (
-    crew_id INT AUTO_INCREMENT PRIMARY KEY,
+    crew_id VARCHAR(10) NOT NULL PRIMARY KEY,
     crew_name VARCHAR(100) NOT NULL,
-    crew_role VARCHAR(60) NOT NULL,
-    crew_status ENUM('AVAILABLE', 'ASSIGNED', 'OFF_DUTY') NOT NULL DEFAULT 'AVAILABLE'
+
+    crew_role ENUM(
+        'BAGGAGE',
+        'CLEANING',
+        'REFUELING',
+        'MAINTENANCE'
+    ) NOT NULL,
+
+    crew_status ENUM(
+        'AVAILABLE',
+        'ASSIGNED',
+        'OFF_DUTY'
+    ) NOT NULL DEFAULT 'AVAILABLE'
 );
+
+-- =========================================
+-- 7. GATE ASSIGNMENTS
+-- =========================================
 
 CREATE TABLE IF NOT EXISTS gate_assignments (
     gate_assignment_id INT AUTO_INCREMENT PRIMARY KEY,
@@ -82,45 +139,117 @@ CREATE TABLE IF NOT EXISTS gate_assignments (
     gate_id INT NOT NULL,
     assigned_from DATETIME NOT NULL,
     assigned_until DATETIME NOT NULL,
-    assignment_status ENUM('SCHEDULED', 'ACTIVE', 'COMPLETED', 'CANCELLED') NOT NULL DEFAULT 'SCHEDULED',
-    CONSTRAINT fk_gate_assignment_flight FOREIGN KEY (flight_id) REFERENCES flights(flight_id),
-    CONSTRAINT fk_gate_assignment_gate FOREIGN KEY (gate_id) REFERENCES gates(gate_id)
+
+    assignment_status ENUM(
+        'SCHEDULED',
+        'ACTIVE',
+        'COMPLETED',
+        'CANCELLED'
+    ) NOT NULL DEFAULT 'SCHEDULED',
+
+    CONSTRAINT fk_gate_assignment_flight
+        FOREIGN KEY (flight_id)
+        REFERENCES flights(flight_id),
+
+    CONSTRAINT fk_gate_assignment_gate
+        FOREIGN KEY (gate_id)
+        REFERENCES gates(gate_id)
 );
+
+-- =========================================
+-- 8. CREW ASSIGNMENTS
+-- =========================================
 
 CREATE TABLE IF NOT EXISTS crew_assignments (
     crew_assignment_id INT AUTO_INCREMENT PRIMARY KEY,
-    crew_id INT NOT NULL,
+    crew_id VARCHAR(10) NOT NULL,
     flight_id INT NOT NULL,
     assigned_from DATETIME NOT NULL,
     assigned_until DATETIME NOT NULL,
-    assignment_status ENUM('ASSIGNED', 'COMPLETED', 'CANCELLED') NOT NULL DEFAULT 'ASSIGNED',
-    CONSTRAINT fk_crew_assignment_crew FOREIGN KEY (crew_id) REFERENCES ground_crew(crew_id),
-    CONSTRAINT fk_crew_assignment_flight FOREIGN KEY (flight_id) REFERENCES flights(flight_id)
+
+    assignment_status ENUM(
+        'ASSIGNED',
+        'COMPLETED',
+        'CANCELLED'
+    ) NOT NULL DEFAULT 'ASSIGNED',
+
+    CONSTRAINT fk_crew_assignment_crew
+        FOREIGN KEY (crew_id)
+        REFERENCES ground_crew(crew_id),
+
+    CONSTRAINT fk_crew_assignment_flight
+        FOREIGN KEY (flight_id)
+        REFERENCES flights(flight_id)
 );
+
+-- =========================================
+-- 9. GROUND SERVICES
+-- =========================================
+
+CREATE TABLE IF NOT EXISTS ground_services (
+    service_id VARCHAR(10) NOT NULL PRIMARY KEY,
+    flight_id INT NOT NULL,
+
+    service_type ENUM(
+        'BAGGAGE',
+        'CLEANING',
+        'REFUELING',
+        'MAINTENANCE'
+    ) NOT NULL,
+
+    status ENUM(
+        'PENDING',
+        'IN_PROGRESS',
+        'COMPLETED'
+    ) NOT NULL DEFAULT 'PENDING',
+
+    assigned_crew_id VARCHAR(10) DEFAULT NULL,
+
+    CONSTRAINT fk_ground_service_crew
+        FOREIGN KEY (assigned_crew_id)
+        REFERENCES ground_crew(crew_id)
+        ON DELETE SET NULL
+        ON UPDATE CASCADE
+);
+
+-- =========================================
+-- 10. OPERATION ALERTS
+-- =========================================
 
 CREATE TABLE IF NOT EXISTS operation_alerts (
     alert_id INT AUTO_INCREMENT PRIMARY KEY,
     flight_id INT NULL,
     alert_type VARCHAR(50) NOT NULL,
     alert_message VARCHAR(500) NOT NULL,
-    alert_priority ENUM('LOW', 'MEDIUM', 'HIGH', 'EMERGENCY') NOT NULL DEFAULT 'LOW',
+
+    alert_priority ENUM(
+        'LOW',
+        'MEDIUM',
+        'HIGH',
+        'EMERGENCY'
+    ) NOT NULL DEFAULT 'LOW',
+
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     is_resolved BOOLEAN NOT NULL DEFAULT FALSE,
-    CONSTRAINT fk_alert_flight FOREIGN KEY (flight_id) REFERENCES flights(flight_id)
+
+    CONSTRAINT fk_alert_flight
+        FOREIGN KEY (flight_id)
+        REFERENCES flights(flight_id)
 );
 
-
 -- =========================================
--- TAXIWAY NETWORK AND AIRCRAFT MOVEMENT
+-- 11. TAXIWAY NODES
 -- =========================================
 
--- 1. Taxiway nodes
 CREATE TABLE IF NOT EXISTS taxiway_nodes (
     node_id VARCHAR(20) PRIMARY KEY,
     node_name VARCHAR(100) NOT NULL
 );
 
--- 2. Taxiway segments connecting nodes
+-- =========================================
+-- 12. TAXIWAY SEGMENTS
+-- =========================================
+
 CREATE TABLE IF NOT EXISTS taxiway_segments (
     segment_id VARCHAR(20) PRIMARY KEY,
     start_node_id VARCHAR(20) NOT NULL,
@@ -140,19 +269,24 @@ CREATE TABLE IF NOT EXISTS taxiway_segments (
     CHECK (start_node_id <> end_node_id)
 );
 
--- 3. Aircraft movement records
+-- =========================================
+-- 13. AIRCRAFT MOVEMENTS
+-- =========================================
+
 CREATE TABLE IF NOT EXISTS aircraft_movements (
     movement_id INT AUTO_INCREMENT PRIMARY KEY,
     flight_id INT NOT NULL,
     source_node_id VARCHAR(20) NOT NULL,
     destination_node_id VARCHAR(20) NOT NULL,
     current_node_id VARCHAR(20),
+
     movement_status ENUM(
         'WAITING',
         'MOVING',
         'STOPPED',
         'COMPLETED'
     ) NOT NULL DEFAULT 'WAITING',
+
     planned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     started_at DATETIME NULL,
     completed_at DATETIME NULL,
@@ -174,7 +308,10 @@ CREATE TABLE IF NOT EXISTS aircraft_movements (
         REFERENCES taxiway_nodes(node_id)
 );
 
--- 4. Stores the ordered nodes in each planned route
+-- =========================================
+-- 14. MOVEMENT ROUTE NODES
+-- =========================================
+
 CREATE TABLE IF NOT EXISTS movement_route_nodes (
     movement_id INT NOT NULL,
     sequence_no INT NOT NULL,
@@ -194,7 +331,10 @@ CREATE TABLE IF NOT EXISTS movement_route_nodes (
     CHECK (sequence_no >= 0)
 );
 
--- 5. Movement history and event logs
+-- =========================================
+-- 15. MOVEMENT LOGS
+-- =========================================
+
 CREATE TABLE IF NOT EXISTS movement_logs (
     log_id INT AUTO_INCREMENT PRIMARY KEY,
     movement_id INT NOT NULL,
@@ -212,4 +352,9 @@ CREATE TABLE IF NOT EXISTS movement_logs (
         FOREIGN KEY (node_id)
         REFERENCES taxiway_nodes(node_id)
 );
+
+-- =========================================
+-- DISPLAY ALL DATABASE TABLES
+-- =========================================
+
 SHOW TABLES;
