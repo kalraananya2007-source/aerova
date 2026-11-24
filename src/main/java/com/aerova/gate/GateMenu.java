@@ -10,11 +10,18 @@ import com.aerova.model.Flight;
 
 public class GateMenu {
 
-    private final Scanner scanner = new Scanner(System.in);
+    private final Scanner scanner;
+
     private final GateManager gateManager = new GateManager();
     private final GateRepository gateRepository = new GateRepository();
     private final FlightRepository flightRepository = new FlightRepository();
 
+    // Constructor: shares Scanner with FlightMenu
+    public GateMenu(Scanner scanner) {
+        this.scanner = scanner;
+    }
+
+    // Main Gate Menu
     public void showMenu() {
 
         int choice = -1;
@@ -45,6 +52,7 @@ public class GateMenu {
             } catch (NumberFormatException e) {
                 System.out.println("Please enter a valid number.");
                 choice = -1;
+
             } catch (SQLException | IllegalArgumentException e) {
                 System.out.println("Error: " + e.getMessage());
                 choice = -1;
@@ -105,7 +113,8 @@ public class GateMenu {
         int gateId = gateRepository.saveGate(gate);
 
         if (gateId > 0) {
-            System.out.println("Gate added successfully! Gate ID: " + gateId);
+            System.out.println(
+                    "Gate added successfully! Gate ID: " + gateId);
         } else {
             System.out.println("Gate could not be added.");
         }
@@ -162,16 +171,26 @@ public class GateMenu {
             return;
         }
 
+        // Check whether aircraft details are available
+        if (flight.getAircraft() == null) {
+            System.out.println(
+                    "Aircraft details not found for this flight.");
+            return;
+        }
+
         System.out.println("Flight Number: " + flight.getFlightNumber());
         System.out.println("Aircraft Size: "
                 + flight.getAircraft().getAircraftSize());
         System.out.println("Scheduled Time: " + flight.getScheduledTime());
 
-        System.out.print("Enter gate occupancy duration (minutes): ");
+        System.out.print(
+                "Enter gate occupancy duration (minutes): ");
+
         int durationMinutes = Integer.parseInt(scanner.nextLine());
 
         if (durationMinutes <= 0) {
-            System.out.println("Duration must be greater than zero.");
+            System.out.println(
+                    "Duration must be greater than zero.");
             return;
         }
 
@@ -179,15 +198,21 @@ public class GateMenu {
                 flight, durationMinutes);
 
         if (assignedGate == null) {
-            System.out.println("No suitable gate available for this flight.");
+            System.out.println(
+                    "No suitable gate available for this flight.");
+
         } else {
             System.out.println("\nGate assigned successfully!");
             System.out.println("Gate ID: " + assignedGate.getGateId());
             System.out.println("Gate Code: " + assignedGate.getGateCode());
             System.out.println("Gate Size: " + assignedGate.getGateSize());
-            System.out.println("Assigned From: " + flight.getScheduledTime());
+
+            System.out.println(
+                    "Assigned From: " + flight.getScheduledTime());
+
             System.out.println("Assigned Until: "
-                    + flight.getScheduledTime().plusMinutes(durationMinutes));
+                    + flight.getScheduledTime()
+                    .plusMinutes(durationMinutes));
         }
     }
 
@@ -199,6 +224,17 @@ public class GateMenu {
         System.out.println("Gate Code: " + gate.getGateCode());
         System.out.println("Gate Size: " + gate.getGateSize());
         System.out.println("Gate Status: " + gate.getStatus());
+
+        // Display scheduled booking information
+        System.out.println("\n--- Scheduled Bookings ---");
+
+        try {
+            System.out.println(
+                    gateRepository.getGateBookingInfo(gate.getGateId()));
+        } catch (SQLException e) {
+            System.out.println("Could not retrieve gate bookings: "
+                    + e.getMessage());
+        }
         System.out.println("--------------------------------");
     }
 }

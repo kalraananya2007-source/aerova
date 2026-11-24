@@ -1,3 +1,4 @@
+
 package com.aerova.gate;
 
 import java.sql.Connection;
@@ -79,14 +80,110 @@ public class GateRepository {
         return gateList;
     }
 
+    // Automatically refresh gate statuses based on booking times
+    public void refreshGateStatuses() throws SQLException {
+
+        LocalDateTime now = LocalDateTime.now();
+
+        ArrayList<Gate> gates = findAllGates();
+
+        String sql = "SELECT assigned_from, assigned_until "
+                + "FROM gate_assignments "
+                + "WHERE gate_id = ? "
+                + "AND assignment_status IN ('SCHEDULED', 'ACTIVE')";
+
+        for (Gate gate : gates) {
+
+            // Never overwrite maintenance status
+            if (gate.getStatus() == GateStatus.MAINTENANCE) {
+                continue;
+            }
+
+            boolean currentlyOccupied = false;
+            boolean hasFutureBooking = false;
+
+            try (Connection con = DatabaseConnection.getConnection();
+                 PreparedStatement ps = con.prepareStatement(sql)) {
+
+                ps.setInt(1, gate.getGateId());
+
+                try (ResultSet rs = ps.executeQuery()) {
+
+                    while (rs.next()) {
+
+                        LocalDateTime start = parseDbDateTime(
+                                rs.getString("assigned_from"));
+
+                        LocalDateTime end = parseDbDateTime(
+                                rs.getString("assigned_until"));
+
+                        if (!now.isBefore(start) && now.isBefore(end)) {
+                            currentlyOccupied = true;
+                        } else if (now.isBefore(start)) {
+                            hasFutureBooking = true;
+                        }
+                    }
+                }
+            }
+
+            GateStatus newStatus;
+
+            if (currentlyOccupied) {
+                newStatus = GateStatus.OCCUPIED;
+            } else if (hasFutureBooking) {
+                newStatus = GateStatus.RESERVED;
+            } else {
+                newStatus = GateStatus.AVAILABLE;
+            }
+
+            if (gate.getStatus() != newStatus) {
+                updateGateStatus(gate.getGateId(), newStatus);
+            }
+        }
+    }
+
+    // Get scheduled assignments for a gate
+    public String getGateBookingInfo(int gateId) throws SQLException {
+
+        String sql = "SELECT f.flight_number, ga.assigned_from, "
+                + "ga.assigned_until "
+                + "FROM gate_assignments ga "
+                + "JOIN flights f ON ga.flight_id = f.flight_id "
+                + "WHERE ga.gate_id = ? "
+                + "AND ga.assignment_status IN ('SCHEDULED', 'ACTIVE') "
+                + "ORDER BY ga.assigned_from";
+
+        StringBuilder info = new StringBuilder();
+
+        try (Connection con = DatabaseConnection.getConnection();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+
+            ps.setInt(1, gateId);
+
+            try (ResultSet rs = ps.executeQuery()) {
+
+                while (rs.next()) {
+                    info.append("Flight: ")
+                            .append(rs.getString("flight_number"))
+                            .append(" | From: ")
+                            .append(rs.getString("assigned_from"))
+                            .append(" | Until: ")
+                            .append(rs.getString("assigned_until"))
+                            .append(System.lineSeparator());
+                }
+            }
+        }
+
+        if (info.length() == 0) {
+            return "No upcoming bookings";
+        }
+
+        return info.toString();
+    }
+
     // Update gate status
     public void updateGateStatus(int gateId, GateStatus status)
             throws SQLException {
-
-        if (status == GateStatus.RESERVED) {
-            throw new SQLException(
-                    "RESERVED is not supported by the database.");
-        }
 
         String sql = "UPDATE gates SET gate_status = ? "
                 + "WHERE gate_id = ?";
@@ -101,15 +198,40 @@ public class GateRepository {
         }
     }
 
-    // Save a flight's gate assignment
-    public int saveGateAssignment(int flightId,
-                                 int gateId,
-                                 LocalDateTime assignedFrom,
-                                 LocalDateTime assignedUntil)
+    // Update gate size
+    public void updateGateSize(int gateId, String gateSize)
             throws SQLException {
+
+        if (!gateSize.equals("SMALL")
+                && !gateSize.equals("MEDIUM")
+                && !gateSize.equals("LARGE")) {
+
+            throw new IllegalArgumentException("Invalid gate size.");
+        }
+
+        String sql = "UPDATE gates SET gate_size = ? "
+                + "WHERE gate_id = ?";
+
+        try (Connection con = DatabaseConnection.getConnection();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+
+            ps.setString(1, gateSize);
+            ps.setInt(2, gateId);
+
+            ps.executeUpdate();
+        }
+    }
+
+    // Save a flight's gate assignment
+    public int saveGateAssignment(
+            int flightId,
+            int gateId,
+            LocalDateTime assignedFrom,
+            LocalDateTime assignedUntil) throws SQLException {
 
         if (assignedFrom == null || assignedUntil == null
                 || !assignedFrom.isBefore(assignedUntil)) {
+
             throw new IllegalArgumentException(
                     "Invalid assignment time range.");
         }
@@ -138,6 +260,83 @@ public class GateRepository {
         }
 
         return -1;
+    }
+
+    // Convert database DATETIME text into LocalDateTime
+    private LocalDateTime parseDbDateTime(String value) {
+
+        return LocalDateTime.parse(value.replace(" ", "T"));
+    }
+
+    // Generate gate report
+    public String getGateReport() throws SQLException {
+
+        StringBuilder report = new StringBuilder();
+
+        int totalGates = 0;
+        int available = 0;
+        int occupied = 0;
+        int reserved = 0;
+        int maintenance = 0;
+
+        String statusSql = "SELECT gate_status, COUNT(*) AS total "
+                + "FROM gates GROUP BY gate_status";
+
+        try (Connection con = DatabaseConnection.getConnection();
+             PreparedStatement ps = con.prepareStatement(statusSql);
+             ResultSet rs = ps.executeQuery()) {
+
+            while (rs.next()) {
+
+                String status = rs.getString("gate_status");
+                int count = rs.getInt("total");
+
+                totalGates += count;
+
+                switch (status) {
+                    case "AVAILABLE" -> available = count;
+                    case "OCCUPIED" -> occupied = count;
+                    case "RESERVED" -> reserved = count;
+                    case "MAINTENANCE" -> maintenance = count;
+                }
+            }
+        }
+
+        report.append("\n========== GATE REPORT ==========\n");
+        report.append("Total Gates: ").append(totalGates).append("\n");
+        report.append("Available Gates: ").append(available).append("\n");
+        report.append("Occupied Gates: ").append(occupied).append("\n");
+        report.append("Reserved Gates: ").append(reserved).append("\n");
+        report.append("Maintenance Gates: ").append(maintenance).append("\n");
+
+        report.append("\n------ Gate Usage Summary ------\n");
+
+        String usageSql = "SELECT g.gate_code, COUNT(ga.gate_assignment_id) "
+                + "AS total_bookings "
+                + "FROM gates g "
+                + "LEFT JOIN gate_assignments ga "
+                + "ON g.gate_id = ga.gate_id "
+                + "AND ga.assignment_status != 'CANCELLED' "
+                + "GROUP BY g.gate_id, g.gate_code "
+                + "ORDER BY g.gate_code";
+
+        try (Connection con = DatabaseConnection.getConnection();
+             PreparedStatement ps = con.prepareStatement(usageSql);
+             ResultSet rs = ps.executeQuery()) {
+
+            while (rs.next()) {
+
+                report.append("Gate ")
+                        .append(rs.getString("gate_code"))
+                        .append(" | Total Bookings: ")
+                        .append(rs.getInt("total_bookings"))
+                        .append("\n");
+            }
+        }
+
+        report.append("===============================\n");
+
+        return report.toString();
     }
 
     // Convert database row to Gate object
