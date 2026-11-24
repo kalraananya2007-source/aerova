@@ -16,7 +16,7 @@ public class ServiceRepository {
     public boolean saveService(GroundService service) {
 
         String sql = "INSERT INTO ground_services " +
-                "(service_id, flight_id, service_type, status) " +
+                "(service_id, flight_id, service_type, service_status) " +
                 "VALUES (?, ?, ?, ?)";
 
         try (Connection con = DatabaseConnection.getConnection();
@@ -85,7 +85,7 @@ public class ServiceRepository {
             String serviceId, ServiceStatus status) {
 
         String sql = "UPDATE ground_services " +
-                "SET status = ? WHERE service_id = ?";
+                "SET service_status = ? WHERE service_id = ?";
 
         try (Connection con = DatabaseConnection.getConnection();
              PreparedStatement ps = con.prepareStatement(sql)) {
@@ -134,7 +134,7 @@ public class ServiceRepository {
         );
 
         service.setStatus(
-                ServiceStatus.valueOf(rs.getString("status"))
+                ServiceStatus.valueOf(rs.getString("service_status"))
         );
 
         service.setAssignedCrewId(
@@ -144,4 +144,3 @@ public class ServiceRepository {
         return service;
     }
 }
-
