@@ -261,7 +261,7 @@ public class GateMenu {
 
             System.out.println("Assigned Until: "
                     + flight.getScheduledTime()
-                            .plusMinutes(durationMinutes));
+                    .plusMinutes(durationMinutes));
         }
     }
 
@@ -282,10 +282,16 @@ public class GateMenu {
         System.out.println("Gate Size: " + gate.getGateSize());
         System.out.println("Gate Status: " + gate.getStatus());
 
+        // Display scheduled booking information
         System.out.println("\n--- Scheduled Bookings ---");
 
-        System.out.println(
-                gateRepository.getGateBookingInfo(gate.getGateId()));
+        try {
+            System.out.println(
+                    gateRepository.getGateBookingInfo(gate.getGateId()));
+        } catch (SQLException e) {
+            System.out.println("Could not retrieve gate bookings: "
+                    + e.getMessage());
+        }
 
         System.out.println("--------------------------------");
     }

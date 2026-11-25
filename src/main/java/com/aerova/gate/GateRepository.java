@@ -168,6 +168,7 @@ public class GateRepository {
             ps.setInt(1, gateId);
 
             try (ResultSet rs = ps.executeQuery()) {
+
                 while (rs.next()) {
                     info.append("Flight: ")
                             .append(rs.getString("flight_number"))
@@ -204,7 +205,7 @@ public class GateRepository {
         }
     }
 
-    // NEW: Update gate size
+    // Update gate size
     public void updateGateSize(int gateId, String gateSize)
             throws SQLException {
 
@@ -271,82 +272,81 @@ public class GateRepository {
         return -1;
     }
 
-    // Convert database DATETIME text into LocalDateTime without timezone shift
+    // Convert database DATETIME text into LocalDateTime
     private LocalDateTime parseDbDateTime(String value) {
-
         return LocalDateTime.parse(value.replace(" ", "T"));
     }
 
-// Generate gate report
-public String getGateReport() throws SQLException {
+    // Generate gate report
+    public String getGateReport() throws SQLException {
 
-    StringBuilder report = new StringBuilder();
+        StringBuilder report = new StringBuilder();
 
-    int totalGates = 0;
-    int available = 0;
-    int occupied = 0;
-    int reserved = 0;
-    int maintenance = 0;
+        int totalGates = 0;
+        int available = 0;
+        int occupied = 0;
+        int reserved = 0;
+        int maintenance = 0;
 
-    String statusSql = "SELECT gate_status, COUNT(*) AS total "
-            + "FROM gates GROUP BY gate_status";
+        String statusSql = "SELECT gate_status, COUNT(*) AS total "
+                + "FROM gates GROUP BY gate_status";
 
-    try (Connection con = DatabaseConnection.getConnection();
-         PreparedStatement ps = con.prepareStatement(statusSql);
-         ResultSet rs = ps.executeQuery()) {
+        try (Connection con = DatabaseConnection.getConnection();
+             PreparedStatement ps = con.prepareStatement(statusSql);
+             ResultSet rs = ps.executeQuery()) {
 
-        while (rs.next()) {
+            while (rs.next()) {
 
-            String status = rs.getString("gate_status");
-            int count = rs.getInt("total");
+                String status = rs.getString("gate_status");
+                int count = rs.getInt("total");
 
-            totalGates += count;
+                totalGates += count;
 
-            switch (status) {
-                case "AVAILABLE" -> available = count;
-                case "OCCUPIED" -> occupied = count;
-                case "RESERVED" -> reserved = count;
-                case "MAINTENANCE" -> maintenance = count;
+                switch (status) {
+                    case "AVAILABLE" -> available = count;
+                    case "OCCUPIED" -> occupied = count;
+                    case "RESERVED" -> reserved = count;
+                    case "MAINTENANCE" -> maintenance = count;
+                }
             }
         }
-    }
 
-    report.append("\n========== GATE REPORT ==========\n");
-    report.append("Total Gates: ").append(totalGates).append("\n");
-    report.append("Available Gates: ").append(available).append("\n");
-    report.append("Occupied Gates: ").append(occupied).append("\n");
-    report.append("Reserved Gates: ").append(reserved).append("\n");
-    report.append("Maintenance Gates: ").append(maintenance).append("\n");
+        report.append("\n========== GATE REPORT ==========\n");
+        report.append("Total Gates: ").append(totalGates).append("\n");
+        report.append("Available Gates: ").append(available).append("\n");
+        report.append("Occupied Gates: ").append(occupied).append("\n");
+        report.append("Reserved Gates: ").append(reserved).append("\n");
+        report.append("Maintenance Gates: ").append(maintenance).append("\n");
 
-    report.append("\n------ Gate Usage Summary ------\n");
+        report.append("\n------ Gate Usage Summary ------\n");
 
-    String usageSql = "SELECT g.gate_code, COUNT(ga.gate_assignment_id) "
-            + "AS total_bookings "
-            + "FROM gates g "
-            + "LEFT JOIN gate_assignments ga "
-            + "ON g.gate_id = ga.gate_id "
-            + "AND ga.assignment_status != 'CANCELLED' "
-            + "GROUP BY g.gate_id, g.gate_code "
-            + "ORDER BY g.gate_code";
+        String usageSql = "SELECT g.gate_code, COUNT(ga.gate_assignment_id) "
+                + "AS total_bookings "
+                + "FROM gates g "
+                + "LEFT JOIN gate_assignments ga "
+                + "ON g.gate_id = ga.gate_id "
+                + "AND ga.assignment_status != 'CANCELLED' "
+                + "GROUP BY g.gate_id, g.gate_code "
+                + "ORDER BY g.gate_code";
 
-    try (Connection con = DatabaseConnection.getConnection();
-         PreparedStatement ps = con.prepareStatement(usageSql);
-         ResultSet rs = ps.executeQuery()) {
+        try (Connection con = DatabaseConnection.getConnection();
+             PreparedStatement ps = con.prepareStatement(usageSql);
+             ResultSet rs = ps.executeQuery()) {
 
-        while (rs.next()) {
+            while (rs.next()) {
 
-            report.append("Gate ")
-                    .append(rs.getString("gate_code"))
-                    .append(" | Total Bookings: ")
-                    .append(rs.getInt("total_bookings"))
-                    .append("\n");
+                report.append("Gate ")
+                        .append(rs.getString("gate_code"))
+                        .append(" | Total Bookings: ")
+                        .append(rs.getInt("total_bookings"))
+                        .append("\n");
+            }
         }
+
+        report.append("===============================\n");
+
+        return report.toString();
     }
-
-    report.append("===============================\n");
-
-    return report.toString();
-}
 
     // Convert database row to Gate object
     private Gate mapGate(ResultSet rs) throws SQLException {
