@@ -80,7 +80,7 @@ public class GateRepository {
         return gateList;
     }
 
-    // Automatically refresh gate statuses based on booking times
+    // Automatically refresh all gate statuses based on booking times
     public void refreshGateStatuses() throws SQLException {
 
         LocalDateTime now = LocalDateTime.now();
@@ -111,21 +111,27 @@ public class GateRepository {
 
                     while (rs.next()) {
 
+                        // Read DATETIME directly as text to avoid timezone shift
                         LocalDateTime start = parseDbDateTime(
                                 rs.getString("assigned_from"));
 
                         LocalDateTime end = parseDbDateTime(
                                 rs.getString("assigned_until"));
 
+                        // Booking is currently active
                         if (!now.isBefore(start) && now.isBefore(end)) {
                             currentlyOccupied = true;
-                        } else if (now.isBefore(start)) {
+                        }
+
+                        // Booking is in the future
+                        else if (now.isBefore(start)) {
                             hasFutureBooking = true;
                         }
                     }
                 }
             }
 
+            // Determine new status
             GateStatus newStatus;
 
             if (currentlyOccupied) {
@@ -136,6 +142,7 @@ public class GateRepository {
                 newStatus = GateStatus.AVAILABLE;
             }
 
+            // Update database only if status actually changed
             if (gate.getStatus() != newStatus) {
                 updateGateStatus(gate.getGateId(), newStatus);
             }
@@ -252,6 +259,9 @@ public class GateRepository {
 
             ps.executeUpdate();
 
+            // Status will be refreshed by GateManager after saving.
+            // This avoids overwriting MAINTENANCE status here.
+
             try (ResultSet rs = ps.getGeneratedKeys()) {
                 if (rs.next()) {
                     return rs.getInt(1);
@@ -264,7 +274,6 @@ public class GateRepository {
 
     // Convert database DATETIME text into LocalDateTime
     private LocalDateTime parseDbDateTime(String value) {
-
         return LocalDateTime.parse(value.replace(" ", "T"));
     }
 
